@@ -2,10 +2,10 @@ import { RealtimeStudentSessionShell } from '@/components/student/realtime-stude
 import { StudentSessionShell } from '@/components/student/student-session-shell';
 import { getVoiceMode } from '@/features/realtime/realtimeConfig';
 
-export default function StudentPage() {
+export default function PlushPage() {
   return getVoiceMode() === 'legacy' ? (
     <StudentSessionShell />
   ) : (
-    <RealtimeStudentSessionShell surface="student" />
+    <RealtimeStudentSessionShell surface="plush" />
   );
 }

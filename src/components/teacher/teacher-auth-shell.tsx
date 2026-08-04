@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { AppModeNav } from '@/components/app/app-mode-nav';
 import type { User } from 'firebase/auth';
 import { ActiveAssignmentManager } from '@/components/teacher/active-assignment-manager';
 import { CharacterManager } from '@/components/teacher/character-manager';
@@ -127,6 +128,8 @@ export function TeacherAuthShell() {
   return (
     <main className="min-h-screen bg-[#fff9f0] px-6 py-10 text-ink">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <AppModeNav currentLabel="Aqui ajustas reglas, contenido y activaciones antes de pasar al alumno o al peluche." />
+
         <section className="rounded-[2rem] bg-white p-8 shadow-card md:p-10">
           <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
             <div className="space-y-5">

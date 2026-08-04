@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { AppModeNav } from '@/components/app/app-mode-nav';
 import { getPublishedStudentRuntimeConfig } from '@/features/teacher-config/services/student-runtime-service';
 import { useRealtimeSession } from '@/features/realtime/useRealtimeSession';
 import type { RealtimeStudentState } from '@/features/realtime/realtimeTypes';
@@ -43,7 +44,13 @@ const stateCards: Array<{
   },
 ];
 
-export function RealtimeStudentSessionShell() {
+type RealtimeStudentSessionShellProps = {
+  surface?: 'student' | 'plush';
+};
+
+export function RealtimeStudentSessionShell({
+  surface = 'student',
+}: RealtimeStudentSessionShellProps) {
   const [runtime, setRuntime] = useState<StudentRuntimeConfig | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<
     'booting' | 'ready' | 'missing-config' | 'error'
@@ -89,23 +96,189 @@ export function RealtimeStudentSessionShell() {
 
   const currentStateLabel = getStateLabel(realtimeSession.state);
   const currentStateMessage = getStateMessage(realtimeSession.state, runtime?.activeCharacter.name);
+  const isPlushSurface = surface === 'plush';
+  const navLabel = isPlushSurface
+    ? 'Esta vista esta pensada para dejar el telefono fijo dentro del peluche.'
+    : 'Esta vista sirve para pruebas, observacion y demostraciones del alumno.';
+  const heroBadge = isPlushSurface ? 'Modo peluche' : 'Modo estudiante';
+  const heroTitle = isPlushSurface
+    ? 'Sesion viva del peluche lista para quedarse abierta en el telefono.'
+    : 'Conversacion realtime del peluche.';
+  const heroDescription = isPlushSurface
+    ? 'Aqui dejamos una interfaz mas directa, con menos distracciones y foco total en escuchar, responder y mantener la conversacion dentro del peluche.'
+    : 'Esta version ya no usa el pipeline mecanico de voz a texto y voz del navegador. Aqui la meta es probar una conversacion mas natural y continua.';
+  const connectLabel = runtime
+    ? isPlushSurface
+      ? `Encender a ${runtime.activeCharacter.name}`
+      : `Hablar con ${runtime.activeCharacter.name}`
+    : isPlushSurface
+      ? 'Encender peluche'
+      : 'Hablar con el peluche';
+  const helperText =
+    runtimeStatus === 'ready'
+      ? isPlushSurface
+        ? 'Deja esta pantalla abierta en el telefono del peluche para conversar sin volver al panel docente.'
+        : 'Pulsa para abrir la sesion realtime. Dentro de la sesion, el modelo mantiene el contexto sin volver a empezar en cada turno.'
+      : runtimeMessage;
+  const transcriptSectionLabel = isPlushSurface ? 'Actividad del peluche' : 'Captura de voz';
+  const transcriptTitle = isPlushSurface ? 'Ultimo intercambio' : 'Ultima intervencion';
+  const responseSectionLabel = isPlushSurface ? 'Respuesta en curso' : 'Respuesta del peluche';
+  const canStartSession =
+    runtimeStatus === 'ready' &&
+    !!runtime &&
+    realtimeSession.state !== 'requesting_permission' &&
+    realtimeSession.state !== 'connecting' &&
+    !realtimeSession.connectionReady;
+  const canEndSession = realtimeSession.connectionReady;
+
+  if (isPlushSurface) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6">
+        <div className="mx-auto flex max-w-md flex-col gap-5">
+          <AppModeNav currentLabel={navLabel} />
+
+          <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
+            <div className="space-y-6 text-center">
+              <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-white/75">
+                {heroBadge}
+              </span>
+
+              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-coral text-3xl font-extrabold text-white">
+                  {runtime?.activeCharacter.name?.slice(0, 8) || 'Mini'}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
+                  Estado actual
+                </p>
+                <h1 className="text-4xl font-extrabold">{currentStateLabel}</h1>
+                <p className="text-base leading-7 text-white/80">
+                  {currentStateMessage}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => void realtimeSession.startSession()}
+                  disabled={!canStartSession}
+                  className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {connectLabel}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void realtimeSession.endSession('ended')}
+                  disabled={!canEndSession}
+                  className="w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Terminar conversacion
+                </button>
+
+                <p className="text-sm leading-6 text-white/70">{helperText}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] bg-white p-6 shadow-card">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+              {transcriptSectionLabel}
+            </p>
+            <h2 className="mt-3 text-2xl font-extrabold">{transcriptTitle}</h2>
+            <div className="mt-5 space-y-4">
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#f7fbff] p-5">
+                <p className="text-sm font-bold text-ink/55">Texto capturado</p>
+                <p className="mt-3 text-xl font-semibold leading-8 text-ink">
+                  {realtimeSession.lastTranscript || 'Todavia no hay una intervencion transcrita.'}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#fdfcf8] p-5">
+                <p className="text-sm font-bold text-ink/55">Microfono</p>
+                <p className="mt-3 text-base leading-7 text-ink/80">
+                  {realtimeSession.permissionMessage ||
+                    formatPermission(realtimeSession.permission)}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] bg-white p-6 shadow-card">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+              {responseSectionLabel}
+            </p>
+            <h2 className="mt-3 text-2xl font-extrabold">Respuesta del peluche</h2>
+            <div className="mt-5 space-y-4">
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#f7fbff] p-5">
+                <p className="text-sm font-bold text-ink/55">Ultimo texto generado</p>
+                <p className="mt-3 text-xl font-semibold leading-8 text-ink">
+                  {realtimeSession.assistantReply || 'Todavia no hay una respuesta generada.'}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#fdfcf8] p-5">
+                <p className="text-sm font-bold text-ink/55">Sesion tecnica</p>
+                <p className="mt-3 text-base leading-7 text-ink/75">
+                  {realtimeSession.sessionInfo
+                    ? `Modelo: ${realtimeSession.sessionInfo.model}. Voz: ${realtimeSession.sessionInfo.voice}.`
+                    : 'La sesion realtime aun no esta conectada.'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] bg-white p-6 shadow-card">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+              Configuracion activa
+            </p>
+            <div className="mt-5 grid gap-4">
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#fdfcf8] p-5">
+                <p className="text-sm font-bold text-ink/55">Personaje</p>
+                <p className="mt-2 text-xl font-semibold text-ink">
+                  {runtime?.activeCharacter.name || 'Sin personaje'}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-ink/10 bg-[#fdfcf8] p-5">
+                <p className="text-sm font-bold text-ink/55">Leccion</p>
+                <p className="mt-2 text-xl font-semibold text-ink">
+                  {runtime?.activeLesson.topic || 'Sin tema'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {(realtimeSession.error || runtimeStatus === 'error') && (
+            <section className="rounded-[2rem] border border-coral/30 bg-[#fff1eb] p-5 shadow-card">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+                Error
+              </p>
+              <p className="mt-3 text-base leading-7 text-ink">
+                {realtimeSession.error || runtimeMessage}
+              </p>
+            </section>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-6 py-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <AppModeNav currentLabel={navLabel} />
+
         <section className="grid gap-8 rounded-[2rem] bg-white/80 p-8 shadow-card backdrop-blur lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
             <span className="inline-flex rounded-full bg-mint px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] text-ink">
-              Modo estudiante
+              {heroBadge}
             </span>
             <div className="space-y-4">
               <h1 className="text-4xl font-extrabold md:text-5xl">
-                Conversacion realtime del peluche.
+                {heroTitle}
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-ink/75">
-                Esta version ya no usa el pipeline mecanico de voz a texto y voz
-                del navegador. Aqui la meta es probar una conversacion mas natural
-                y continua.
+                {heroDescription}
               </p>
             </div>
 
@@ -151,33 +324,23 @@ export function RealtimeStudentSessionShell() {
                 <button
                   type="button"
                   onClick={() => void realtimeSession.startSession()}
-                  disabled={
-                    runtimeStatus !== 'ready' ||
-                    !runtime ||
-                    realtimeSession.state === 'requesting_permission' ||
-                    realtimeSession.state === 'connecting' ||
-                    realtimeSession.connectionReady
-                  }
+                  disabled={!canStartSession}
                   className="w-full rounded-full border-2 border-white/30 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  {runtime
-                    ? `Hablar con ${runtime.activeCharacter.name}`
-                    : 'Hablar con el peluche'}
+                  {connectLabel}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => void realtimeSession.endSession('ended')}
-                  disabled={!realtimeSession.connectionReady}
+                  disabled={!canEndSession}
                   className="w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Terminar conversacion
                 </button>
 
                 <p className="text-sm leading-6 text-white/70">
-                  {runtimeStatus === 'ready'
-                    ? 'Pulsa para abrir la sesion realtime. Dentro de la sesion, el modelo mantiene el contexto sin volver a empezar en cada turno.'
-                    : runtimeMessage}
+                  {helperText}
                 </p>
               </div>
             </div>
@@ -187,9 +350,9 @@ export function RealtimeStudentSessionShell() {
         <section className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-[2rem] bg-white p-8 shadow-card">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-              Captura de voz
+              {transcriptSectionLabel}
             </p>
-            <h2 className="mt-4 text-3xl font-extrabold">Ultima intervencion</h2>
+            <h2 className="mt-4 text-3xl font-extrabold">{transcriptTitle}</h2>
             <div className="mt-6 space-y-4">
               <div className="rounded-[1.5rem] border border-ink/10 bg-[#f7fbff] p-5">
                 <p className="text-sm font-bold text-ink/55">Texto capturado</p>
@@ -209,7 +372,7 @@ export function RealtimeStudentSessionShell() {
 
           <article className="rounded-[2rem] bg-white p-8 shadow-card">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-              Respuesta del peluche
+              {responseSectionLabel}
             </p>
             <h2 className="mt-4 text-3xl font-extrabold">Audio y transcript</h2>
             <div className="mt-6 space-y-4">

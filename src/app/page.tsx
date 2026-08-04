@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AppModeNav } from '@/components/app/app-mode-nav';
 
 const cards = [
   {
@@ -6,6 +7,12 @@ const cards = [
     title: 'Modo Estudiante',
     description:
       'Interfaz de voz para el peluche interactivo, con estados claros para escuchar, pensar y hablar.',
+  },
+  {
+    href: '/plush',
+    title: 'Modo Peluche',
+    description:
+      'Vista simplificada para dejar el telefono siempre abierto dentro del peluche, lista para escuchar y responder.',
   },
   {
     href: '/teacher',
@@ -19,6 +26,8 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-hero-glow px-6 py-10 text-ink">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
+        <AppModeNav currentLabel="Desde aqui entras al panel docente, a la vista de pruebas del alumno o al modo estable del peluche." />
+
         <section className="overflow-hidden rounded-[2rem] bg-white/75 p-8 shadow-card backdrop-blur md:p-12">
           <div className="grid gap-10 md:grid-cols-[1.2fr_0.8fr] md:items-center">
             <div className="space-y-6">
@@ -30,23 +39,30 @@ export default function HomePage() {
                   El cerebro web de un peluche que ensena espanol con voz.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-ink/75">
-                  Esta base prepara dos mundos: la experiencia del estudiante y el
-                  panel del profesor. La logica de voz, OpenAI y Firebase quedara
-                  conectada en modulos separados para evitar un chat generico.
+                  Esta base ahora separa tres superficies: el panel docente, la
+                  vista de pruebas del estudiante y el verdadero modo peluche para
+                  el telefono. La logica de voz, OpenAI y Firebase queda organizada
+                  en modulos separados para evitar un chat generico.
                 </p>
               </div>
               <div className="flex flex-wrap gap-4">
                 <Link
-                  href="/student"
+                  href="/plush"
                   className="rounded-full bg-coral px-6 py-3 font-bold text-white transition hover:translate-y-[-1px] hover:bg-[#ef7444]"
                 >
-                  Abrir modo estudiante
+                  Abrir modo peluche
                 </Link>
                 <Link
                   href="/teacher"
                   className="rounded-full border border-ink/10 bg-white px-6 py-3 font-bold text-ink transition hover:border-coral hover:text-coral"
                 >
                   Abrir panel del profesor
+                </Link>
+                <Link
+                  href="/student"
+                  className="rounded-full border border-ink/10 bg-white px-6 py-3 font-bold text-ink transition hover:border-coral hover:text-coral"
+                >
+                  Abrir vista estudiante
                 </Link>
               </div>
             </div>
@@ -67,7 +83,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 md:grid-cols-2">
+        <section className="grid gap-6 md:grid-cols-3">
           {cards.map((card) => (
             <Link
               key={card.href}
