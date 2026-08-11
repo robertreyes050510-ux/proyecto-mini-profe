@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppModeNav } from '@/components/app/app-mode-nav';
 import { getPublishedStudentRuntimeConfig } from '@/features/teacher-config/services/student-runtime-service';
 import { useRealtimeSession } from '@/features/realtime/useRealtimeSession';
@@ -48,6 +48,16 @@ type RealtimeStudentSessionShellProps = {
   surface?: 'student' | 'plush';
 };
 
+type WakeLockSentinelLike = {
+  release: () => Promise<void>;
+};
+
+type NavigatorWithWakeLock = Navigator & {
+  wakeLock?: {
+    request: (type: 'screen') => Promise<WakeLockSentinelLike>;
+  };
+};
+
 export function RealtimeStudentSessionShell({
   surface = 'student',
 }: RealtimeStudentSessionShellProps) {
@@ -58,6 +68,16 @@ export function RealtimeStudentSessionShell({
   const [runtimeMessage, setRuntimeMessage] = useState(
     'Cargando configuracion activa del peluche...',
   );
+  const [adultTapCount, setAdultTapCount] = useState(0);
+  const [adultControlsVisible, setAdultControlsVisible] = useState(false);
+  const [armedExitTarget, setArmedExitTarget] = useState<
+    'none' | 'student' | 'teacher'
+  >('none');
+  const [screenProtectionStatus, setScreenProtectionStatus] = useState<
+    'idle' | 'ready' | 'unsupported' | 'blocked'
+  >('idle');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
   const realtimeSession = useRealtimeSession(runtime);
 
   const loadRuntime = useCallback(async () => {
@@ -93,6 +113,155 @@ export function RealtimeStudentSessionShell({
   useEffect(() => {
     void loadRuntime();
   }, [loadRuntime]);
+
+  useEffect(() => {
+    if (adultTapCount === 0 || adultControlsVisible) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAdultTapCount(0);
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [adultControlsVisible, adultTapCount]);
+
+  useEffect(() => {
+    if (!adultControlsVisible) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAdultControlsVisible(false);
+      setArmedExitTarget('none');
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [adultControlsVisible]);
+
+  useEffect(() => {
+    if (armedExitTarget === 'none') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setArmedExitTarget('none');
+    }, 7000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [armedExitTarget]);
+
+  const releaseWakeLock = useCallback(async () => {
+    const currentWakeLock = wakeLockRef.current;
+    if (!currentWakeLock) {
+      return;
+    }
+
+    wakeLockRef.current = null;
+    await currentWakeLock.release().catch(() => undefined);
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if (surface !== 'plush' || typeof navigator === 'undefined') {
+      return;
+    }
+
+    const wakeLockNavigator = navigator as NavigatorWithWakeLock;
+
+    if (!wakeLockNavigator.wakeLock?.request) {
+      setScreenProtectionStatus('unsupported');
+      return;
+    }
+
+    try {
+      await releaseWakeLock();
+      wakeLockRef.current = await wakeLockNavigator.wakeLock.request('screen');
+      setScreenProtectionStatus('ready');
+    } catch {
+      setScreenProtectionStatus('blocked');
+    }
+  }, [releaseWakeLock, surface]);
+
+  const requestFullscreen = useCallback(async () => {
+    if (surface !== 'plush' || typeof document === 'undefined') {
+      return;
+    }
+
+    if (document.fullscreenElement) {
+      setIsFullscreen(true);
+      return;
+    }
+
+    const fullscreenHost = document.documentElement as HTMLElement & {
+      requestFullscreen?: () => Promise<void>;
+    };
+
+    if (!fullscreenHost.requestFullscreen) {
+      return;
+    }
+
+    try {
+      await fullscreenHost.requestFullscreen();
+      setIsFullscreen(true);
+    } catch {
+      setIsFullscreen(false);
+    }
+  }, [surface]);
+
+  const preparePlushSurface = useCallback(async () => {
+    if (surface !== 'plush') {
+      return;
+    }
+
+    await requestFullscreen();
+    await requestWakeLock();
+  }, [requestFullscreen, requestWakeLock, surface]);
+
+  const handleStartSession = useCallback(async () => {
+    await preparePlushSurface();
+    await realtimeSession.startSession();
+  }, [preparePlushSurface, realtimeSession]);
+
+  useEffect(() => {
+    if (surface !== 'plush' || typeof document === 'undefined') {
+      return;
+    }
+
+    const syncFullscreenState = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    syncFullscreenState();
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+    };
+  }, [surface]);
+
+  useEffect(() => {
+    if (surface !== 'plush' || typeof document === 'undefined') {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [requestWakeLock, surface]);
+
+  useEffect(() => {
+    return () => {
+      void releaseWakeLock();
+    };
+  }, [releaseWakeLock]);
 
   const currentStateLabel = getStateLabel(realtimeSession.state);
   const currentStateMessage = getStateMessage(realtimeSession.state, runtime?.activeCharacter.name);
@@ -130,24 +299,76 @@ export function RealtimeStudentSessionShell({
     realtimeSession.state !== 'connecting' &&
     !realtimeSession.connectionReady;
   const canEndSession = realtimeSession.connectionReady;
+  const plushProtectionLabel =
+    screenProtectionStatus === 'ready'
+      ? 'Proteccion activa'
+      : screenProtectionStatus === 'unsupported'
+        ? 'Proteccion parcial'
+        : screenProtectionStatus === 'blocked'
+          ? 'Proteccion bloqueada'
+          : 'Proteccion pendiente';
+  const plushProtectionMessage =
+    screenProtectionStatus === 'ready'
+      ? 'La pantalla intenta permanecer despierta mientras el peluche esta en uso.'
+      : screenProtectionStatus === 'unsupported'
+        ? 'Este navegador no permite fijar la pantalla despierta, pero el modo peluche sigue disponible.'
+        : screenProtectionStatus === 'blocked'
+          ? 'No se pudo fijar la pantalla. Puedes reactivarla desde controles del adulto.'
+          : 'La proteccion se prepara al abrir la sesion de voz.';
+  const handleAdultUnlockTap = useCallback(() => {
+    if (!isPlushSurface || adultControlsVisible) {
+      return;
+    }
+
+    setAdultTapCount((current) => {
+      const next = current + 1;
+
+      if (next >= 5) {
+        setAdultControlsVisible(true);
+        return 0;
+      }
+
+      return next;
+    });
+  }, [adultControlsVisible, isPlushSurface]);
+
+  const handleProtectedNavigation = useCallback(
+    (target: 'student' | 'teacher') => {
+      if (armedExitTarget !== target) {
+        setArmedExitTarget(target);
+        setRuntimeMessage(
+          target === 'student'
+            ? 'Salida a pruebas preparada. Toca otra vez si de verdad quieres salir del modo peluche.'
+            : 'Salida al panel preparada. Toca otra vez si de verdad quieres salir del modo peluche.',
+        );
+        return;
+      }
+
+      window.location.href = target === 'student' ? '/student' : '/teacher';
+    },
+    [armedExitTarget],
+  );
 
   if (isPlushSurface) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6">
+    <main className="min-h-screen select-none overscroll-none bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6 [touch-action:manipulation]">
         <div className="mx-auto flex max-w-md flex-col gap-5">
-          <AppModeNav currentLabel={navLabel} />
-
           <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
             <div className="space-y-6 text-center">
               <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-white/75">
                 {heroBadge}
               </span>
 
-              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12">
+              <button
+                type="button"
+                onClick={handleAdultUnlockTap}
+                className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12 transition hover:bg-white/15"
+                aria-label="Mostrar controles del adulto"
+              >
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-coral text-3xl font-extrabold text-white">
                   {runtime?.activeCharacter.name?.slice(0, 8) || 'Mini'}
                 </div>
-              </div>
+              </button>
 
               <div className="space-y-3">
                 <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
@@ -160,25 +381,110 @@ export function RealtimeStudentSessionShell({
               </div>
 
               <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => void realtimeSession.startSession()}
-                  disabled={!canStartSession}
-                  className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
-                >
+                  <button
+                    type="button"
+                    onClick={() => void handleStartSession()}
+                    disabled={!canStartSession}
+                    className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
+                  >
                   {connectLabel}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => void realtimeSession.endSession('ended')}
-                  disabled={!canEndSession}
-                  className="w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Terminar conversacion
-                </button>
+                  {adultControlsVisible ? (
+                    <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
+                        Controles del adulto
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-white/75">
+                        Esta zona se oculta sola para evitar toques accidentales
+                        mientras el telefono esta dentro del peluche.
+                      </p>
 
-                <p className="text-sm leading-6 text-white/70">{helperText}</p>
+                      <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/65">
+                          Pantalla del peluche
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-white">
+                          {plushProtectionLabel}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-white/75">
+                          {plushProtectionMessage}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-white/55">
+                          {isFullscreen
+                            ? 'La vista esta en pantalla completa.'
+                            : 'Si el navegador lo permite, la pantalla completa se reactiva al iniciar la sesion.'}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void preparePlushSurface()}
+                        className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
+                      >
+                        Reactivar proteccion
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void realtimeSession.endSession('ended')}
+                      disabled={!canEndSession}
+                      className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Terminar conversacion
+                    </button>
+
+                    <p className="mt-4 text-xs leading-5 text-white/55">
+                      Para salir del modo peluche, primero preparas la salida y
+                      luego confirmas con un segundo toque.
+                    </p>
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => handleProtectedNavigation('student')}
+                        className="rounded-full bg-white/10 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-white/15"
+                      >
+                        {armedExitTarget === 'student'
+                          ? 'Confirmar salida a pruebas'
+                          : 'Preparar salida a pruebas'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProtectedNavigation('teacher')}
+                        className="rounded-full bg-white/10 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-white/15"
+                      >
+                        {armedExitTarget === 'teacher'
+                          ? 'Confirmar salida al panel'
+                          : 'Preparar salida al panel'}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdultControlsVisible(false);
+                        setAdultTapCount(0);
+                        setArmedExitTarget('none');
+                      }}
+                      className="mt-3 w-full rounded-full bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15"
+                    >
+                      Ocultar controles
+                    </button>
+                  </div>
+                ) : (
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-center">
+                      <p className="text-sm leading-6 text-white/70">
+                        {helperText}
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-white/55">
+                        Controles ocultos para evitar toques accidentales. La
+                        proteccion de pantalla se activa al iniciar la sesion y
+                        puedes tocar el avatar 5 veces para mostrar los
+                        controles del adulto.
+                      </p>
+                    </div>
+                  )}
               </div>
             </div>
           </section>
