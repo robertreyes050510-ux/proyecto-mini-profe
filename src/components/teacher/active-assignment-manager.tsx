@@ -121,14 +121,14 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
     <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
       <article className="rounded-[2rem] bg-white p-8 shadow-card">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-          Configuracion activa
+          Clase de hoy
         </p>
         <h2 className="mt-4 text-3xl font-extrabold">
-          Personaje y leccion que usara el estudiante
+          Elige que combinacion quieres activar en el peluche
         </h2>
         <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
-          Esta seleccion sera la combinacion base para la app del peluche cuando
-          pasemos al flujo de voz del estudiante.
+          Este es el paso que deberias usar casi todos los dias. Selecciona el
+          personaje, el tema y activa la configuracion que usara el peluche.
         </p>
 
         {!isReadyToAssign ? (
@@ -140,7 +140,7 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
-                Personaje activo
+                Personaje para hoy
               </span>
               <select
                 value={activeCharacterId}
@@ -161,7 +161,7 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
 
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
-                Leccion activa
+                Leccion para hoy
               </span>
               <select
                 value={activeLessonId}
@@ -191,7 +191,7 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
               disabled={busy || !activeCharacterId || !activeLessonId}
               className="rounded-full bg-coral px-6 py-3 font-bold text-white transition hover:bg-[#ef7444] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {busy ? 'Guardando...' : 'Guardar configuracion activa'}
+              {busy ? 'Activando...' : 'Activar en el peluche'}
             </button>
           </form>
         )}
@@ -224,19 +224,21 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
             </p>
             <p className="mt-2 text-base leading-7 text-ink/70">
               {activeLesson
-                ? `${activeLesson.gradeLevel} · ${activeLesson.allowedVocabulary.length} palabras permitidas`
-                : 'Selecciona una leccion para limitar vocabulario y objetivo.'}
+                ? `${activeLesson.gradeLevel} · ${activeLesson.allowedVocabulary.length} palabras y expresiones clave`
+                : 'Selecciona una leccion para marcar tema, objetivo y lenguaje clave.'}
             </p>
           </div>
 
           {activeLesson ? (
             <div className="rounded-[1.5rem] border border-ink/10 p-5">
-              <p className="text-sm font-bold text-ink/55">Objetivo y fallback</p>
+              <p className="text-sm font-bold text-ink/55">Objetivo e idioma</p>
               <p className="mt-2 text-base leading-7 text-ink/75">
                 {activeLesson.objective}
               </p>
               <p className="mt-3 text-sm font-bold text-coral">
-                {activeLesson.englishFallbackText}
+                {activeLesson.englishSupportAllowed
+                  ? 'Espanol con apoyo breve en ingles.'
+                  : 'Espanol como idioma principal de la conversacion.'}
               </p>
             </div>
           ) : null}

@@ -230,12 +230,12 @@ export function CharacterManager({ user }: { user: User }) {
               Personajes
             </p>
             <h2 className="mt-4 text-3xl font-extrabold">
-              Nombre del peluche y activacion por voz
+              Personalidad y voz de Paco
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
-              Aqui defines como se llama el personaje y que frase usara el
-              estudiante para activarlo, por ejemplo `Hola Paco`, y tambien
-              variantes que el navegador suele entender mejor.
+              Aqui guardas personajes reutilizables. Lo normal es tocar nombre,
+              personalidad y voz; la activacion y las variantes quedan como ajuste
+              avanzado cuando haga falta.
             </p>
           </div>
           <button
@@ -262,41 +262,6 @@ export function CharacterManager({ user }: { user: User }) {
               placeholder="Paco"
               required
             />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-ink/70">
-              Frase de activacion
-            </span>
-            <input
-              type="text"
-              value={draft.wakePhrase}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  wakePhrase: event.target.value,
-                }))
-              }
-              className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-              placeholder="Hola Paco"
-              required
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-ink/70">
-              Variantes aceptadas del nombre
-            </span>
-            <textarea
-              value={wakeAliasesText}
-              onChange={(event) => setWakeAliasesText(event.target.value)}
-              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-              placeholder={'Sasa\nSasha\nZaza'}
-            />
-            <p className="mt-2 text-sm text-ink/55">
-              Escribe una variante por linea. El peluche aceptara estas formas
-              cuando el reconocimiento de voz confunda el nombre.
-            </p>
           </label>
 
           <label className="block">
@@ -380,6 +345,52 @@ export function CharacterManager({ user }: { user: User }) {
               />
             </label>
           </div>
+
+          <details className="rounded-[1.5rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
+            <summary className="cursor-pointer list-none text-base font-bold text-ink">
+              Configuracion avanzada del personaje
+            </summary>
+            <p className="mt-3 text-sm leading-6 text-ink/60">
+              Usa esto solo cuando quieras ajustar activacion o comportamiento fino
+              del reconocimiento de voz.
+            </p>
+
+            <div className="mt-5 space-y-5">
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Frase de activacion
+                </span>
+                <input
+                  type="text"
+                  value={draft.wakePhrase}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      wakePhrase: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="Hola Paco"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Variantes aceptadas del nombre
+                </span>
+                <textarea
+                  value={wakeAliasesText}
+                  onChange={(event) => setWakeAliasesText(event.target.value)}
+                  className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder={'Sasa\nSasha\nZaza'}
+                />
+                <p className="mt-2 text-sm text-ink/55">
+                  Escribe una variante por linea para cubrir confusiones comunes del microfono.
+                </p>
+              </label>
+            </div>
+          </details>
 
           {error ? (
             <p className="rounded-2xl bg-[#fff1eb] px-4 py-3 text-sm font-bold text-[#b84e28]">

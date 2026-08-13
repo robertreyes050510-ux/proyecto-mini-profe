@@ -17,10 +17,10 @@ import {
 import { getFirebaseProjectId } from '@/lib/firebase/config';
 
 const modules = [
-  'Nivel y objetivo de la leccion',
-  'Vocabulario permitido',
-  'Velocidad de voz y longitud maxima',
-  'Asignacion futura a dispositivos',
+  'Preparar la clase de hoy en pocos pasos',
+  'Activar una combinacion lista para el peluche',
+  'Esconder lo tecnico dentro de opciones avanzadas',
+  'Mantener biblioteca de lecciones y personajes',
 ];
 
 type AuthMode = 'signin' | 'signup';
@@ -137,11 +137,12 @@ export function TeacherAuthShell() {
                 Panel del profesor
               </span>
               <h1 className="text-4xl font-extrabold md:text-5xl">
-                Centro de control para las reglas del personaje y la leccion.
+                Prepara a Paco para hoy sin entrar en menus tecnicos.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-ink/75">
-                El acceso ya usa Firebase Authentication con correo y contrasena
-                del proyecto nuevo `proyecto-mini-profe`.
+                La idea principal de esta pantalla es que cada manana puedas elegir
+                grupo, tema, objetivo y estilo de conversacion, y luego activar el
+                peluche. Lo mas fino queda mas abajo en configuracion avanzada.
               </p>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-coral">
                 Firebase activo: {getFirebaseProjectId()}
@@ -286,13 +287,14 @@ export function TeacherAuthShell() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-                      Panel rapido
+                      Vista diaria
                     </p>
                     <h2 className="mt-4 text-3xl font-extrabold">
-                      Bienvenido, profesor.
+                      Configura la clase y activa el peluche.
                     </h2>
                     <p className="mt-3 text-base leading-7 text-ink/70">
-                      La sesion ya esta activa con Firebase Authentication.
+                      Esta parte quiere quedarse corta: eliges lo importante para
+                      hoy y dejas los ajustes finos guardados o escondidos.
                     </p>
                   </div>
 
@@ -312,17 +314,21 @@ export function TeacherAuthShell() {
                     <p className="mt-2 text-2xl font-extrabold">{user.email}</p>
                   </div>
                   <div className="rounded-[1.5rem] border border-ink/10 p-5">
-                    <p className="text-sm font-bold text-ink/55">
-                      Wake word planeada
-                    </p>
+                    <p className="text-sm font-bold text-ink/55">Objetivo del panel</p>
                     <p className="mt-2 text-2xl font-extrabold">
-                      Nombre del peluche
+                      Menos carga diaria
+                    </p>
+                    <p className="mt-2 text-base leading-7 text-ink/70">
+                      Tema, objetivo, expresiones clave y activacion primero.
                     </p>
                   </div>
                   <div className="rounded-[1.5rem] border border-ink/10 p-5">
-                    <p className="text-sm font-bold text-ink/55">Firestore</p>
+                    <p className="text-sm font-bold text-ink/55">Ajustes finos</p>
                     <p className="mt-2 text-2xl font-extrabold">
-                      Listo para personajes
+                      Debajo y ocultables
+                    </p>
+                    <p className="mt-2 text-base leading-7 text-ink/70">
+                      Voz, wake phrase, fallback y limites siguen disponibles.
                     </p>
                   </div>
                 </div>
@@ -345,9 +351,9 @@ export function TeacherAuthShell() {
               </article>
             </section>
 
-            <CharacterManager user={user} />
-            <LessonManager user={user} />
             <ActiveAssignmentManager user={user} />
+            <LessonManager user={user} />
+            <CharacterManager user={user} />
           </>
         ) : null}
       </div>

@@ -185,11 +185,11 @@ export function LessonManager({ user }: { user: User }) {
               Lecciones
             </p>
             <h2 className="mt-4 text-3xl font-extrabold">
-              Tema, vocabulario permitido y objetivo
+              Prepara el contenido de hoy
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
-              Aqui defines el contenido que el peluche si puede ensenar y los
-              limites pedagogicos de sus respuestas.
+              Esta pantalla deberia resolver casi todo lo diario: grupo, tema,
+              objetivo, palabras clave, apoyo de idioma y libertad conversacional.
             </p>
           </div>
           <button
@@ -205,7 +205,7 @@ export function LessonManager({ user }: { user: User }) {
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
-                Nivel
+                Grupo o nivel
               </span>
               <select
                 value={draft.gradeLevel}
@@ -243,9 +243,9 @@ export function LessonManager({ user }: { user: User }) {
           </div>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-bold text-ink/70">
-              Objetivo de la leccion
-            </span>
+              <span className="mb-2 block text-sm font-bold text-ink/70">
+                Objetivo de hoy
+              </span>
             <textarea
               value={draft.objective}
               onChange={(event) =>
@@ -261,8 +261,8 @@ export function LessonManager({ user }: { user: User }) {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-bold text-ink/70">
-              Vocabulario permitido
+              <span className="mb-2 block text-sm font-bold text-ink/70">
+              Palabras y expresiones clave
             </span>
             <textarea
               value={vocabularyText}
@@ -272,13 +272,13 @@ export function LessonManager({ user }: { user: User }) {
               required
             />
             <p className="mt-2 text-sm text-ink/55">
-              Escribe una palabra por linea.
+              Escribe una por linea. Esto marca el lenguaje que quieres empujar hoy.
             </p>
           </label>
 
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-ink/70">
-              Frases de apoyo permitidas
+              Frases que quiero reforzar
             </span>
             <textarea
               value={supportPhrasesText}
@@ -287,14 +287,14 @@ export function LessonManager({ user }: { user: User }) {
               placeholder={'Muy bien\nIntentalo otra vez\nEn espanol decimos...\nExcelente trabajo'}
             />
             <p className="mt-2 text-sm text-ink/55">
-              Sirven para dar mas naturalidad sin convertir al peluche en chat libre.
+              Sirven para que Paco repita expresiones utiles con naturalidad.
             </p>
           </label>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
-                Modo de respuesta
+                Estilo de respuesta
               </span>
               <select
                 value={draft.responseMode}
@@ -316,7 +316,7 @@ export function LessonManager({ user }: { user: User }) {
 
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
-                Libertad de interaccion
+                Libertad de conversacion
               </span>
               <select
                 value={draft.freedomLevel}
@@ -337,50 +337,6 @@ export function LessonManager({ user }: { user: User }) {
             </label>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-ink/70">
-                Maximo de oraciones
-              </span>
-              <input
-                type="number"
-                min="1"
-                max="2"
-                step="1"
-                value={draft.maxResponseSentences}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    maxResponseSentences: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-                required
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-ink/70">
-                Maximo de preguntas
-              </span>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step="1"
-                value={draft.maxQuestionsPerTurn}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    maxQuestionsPerTurn: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-                required
-              />
-            </label>
-          </div>
-
           <label className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-4">
             <input
               type="checkbox"
@@ -395,38 +351,92 @@ export function LessonManager({ user }: { user: User }) {
             />
             <span className="block">
               <span className="block text-sm font-bold text-ink/70">
-                Permitir apoyo breve en ingles
+                Espanol con apoyo breve en ingles
               </span>
               <span className="mt-1 block text-sm leading-6 text-ink/55">
-                Util cuando los ninos aun no entienden suficiente espanol. El personaje
-                podra aclarar significado o dar una traduccion corta, pero volvera al
-                espanol enseguida.
+                Util cuando los ninos aun no entienden suficiente espanol. Paco
+                puede aclarar algo en ingles y volver al espanol enseguida.
               </span>
             </span>
           </label>
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-ink/70">
-              Apoyo breve cuando el alumno hable ingles
-            </span>
-            <input
-              type="text"
-              value={draft.englishFallbackText}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  englishFallbackText: event.target.value,
-                }))
-              }
-              className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-              placeholder="En espanol lo decimos asi. Escucha y luego intentalo conmigo otra vez."
-              required
-            />
-            <p className="mt-2 text-sm text-ink/55">
-              Este texto se usa cuando quieras una ayuda corta y amable en vez de cortar
-              la interaccion de golpe.
+          <details className="rounded-[1.5rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
+            <summary className="cursor-pointer list-none text-base font-bold text-ink">
+              Configuracion avanzada de la leccion
+            </summary>
+            <p className="mt-3 text-sm leading-6 text-ink/60">
+              Aqui quedan los limites y ajustes pedagogicos finos que no deberias
+              tocar cada manana.
             </p>
-          </label>
+
+            <div className="mt-5 space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-ink/70">
+                    Maximo de oraciones
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="2"
+                    step="1"
+                    value={draft.maxResponseSentences}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        maxResponseSentences: Number(event.target.value),
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                    required
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-ink/70">
+                    Maximo de preguntas
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="1"
+                    value={draft.maxQuestionsPerTurn}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        maxQuestionsPerTurn: Number(event.target.value),
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Apoyo breve cuando el alumno hable ingles
+                </span>
+                <input
+                  type="text"
+                  value={draft.englishFallbackText}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      englishFallbackText: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="En espanol lo decimos asi. Escucha y luego intentalo conmigo otra vez."
+                  required
+                />
+                <p className="mt-2 text-sm text-ink/55">
+                  Este texto se usa cuando quieres una ayuda corta y amable.
+                </p>
+              </label>
+            </div>
+          </details>
 
           {error ? (
             <p className="rounded-2xl bg-[#fff1eb] px-4 py-3 text-sm font-bold text-[#b84e28]">
@@ -499,7 +509,7 @@ export function LessonManager({ user }: { user: User }) {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-ink/55">
-                        Vocabulario permitido
+                        Palabras y expresiones clave
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {lesson.allowedVocabulary.map((word) => (
@@ -514,7 +524,7 @@ export function LessonManager({ user }: { user: User }) {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-ink/55">
-                        Frases de apoyo
+                        Frases que quiero reforzar
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {lesson.supportPhrases?.length ? (
