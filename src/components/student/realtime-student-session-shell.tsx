@@ -430,14 +430,19 @@ export function RealtimeStudentSessionShell({
                         onClick={() => void realtimeSession.endSession('ended')}
                       disabled={!canEndSession}
                       className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Terminar conversacion
-                    </button>
+                  >
+                    Poner peluche en reposo
+                  </button>
 
-                    <p className="mt-4 text-xs leading-5 text-white/55">
-                      Para salir del modo peluche, primero preparas la salida y
-                      luego confirmas con un segundo toque.
-                    </p>
+                  <p className="mt-4 text-xs leading-5 text-white/55">
+                    Cierra la conversacion activa y deja el modo peluche listo
+                    para volver a usarse sin salir de esta pantalla.
+                  </p>
+
+                  <p className="mt-3 text-xs leading-5 text-white/45">
+                    Para salir del modo peluche, primero preparas la salida y
+                    luego confirmas con un segundo toque.
+                  </p>
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <button
@@ -477,12 +482,13 @@ export function RealtimeStudentSessionShell({
                       <p className="text-sm leading-6 text-white/70">
                         {helperText}
                       </p>
-                      <p className="mt-2 text-xs leading-5 text-white/55">
-                        Controles ocultos para evitar toques accidentales. La
-                        proteccion de pantalla se activa al iniciar la sesion y
-                        puedes tocar el avatar 5 veces para mostrar los
-                        controles del adulto.
-                      </p>
+                <p className="mt-2 text-xs leading-5 text-white/55">
+                  Controles ocultos para evitar toques accidentales. La
+                  proteccion de pantalla se activa al iniciar la sesion y
+                  puedes tocar el avatar 5 veces para mostrar los controles
+                  del adulto sin exponer una salida visible para el
+                  estudiante.
+                </p>
                     </div>
                   )}
               </div>

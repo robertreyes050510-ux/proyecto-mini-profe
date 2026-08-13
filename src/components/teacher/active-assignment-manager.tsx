@@ -69,6 +69,24 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
     void refreshAssignmentData();
   }, [refreshAssignmentData]);
 
+  useEffect(() => {
+    const handleCharactersUpdated = () => {
+      void refreshAssignmentData();
+    };
+
+    window.addEventListener(
+      'teacher-characters-updated',
+      handleCharactersUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'teacher-characters-updated',
+        handleCharactersUpdated,
+      );
+    };
+  }, [refreshAssignmentData]);
+
   const activeCharacter = useMemo(
     () => characters.find((character) => character.id === activeCharacterId) ?? null,
     [characters, activeCharacterId],

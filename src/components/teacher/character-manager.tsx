@@ -178,6 +178,7 @@ export function CharacterManager({ user }: { user: User }) {
 
       resetForm();
       await refreshCharacters();
+      window.dispatchEvent(new CustomEvent('teacher-characters-updated'));
     } catch (submitError) {
       setError(getFriendlyFirestoreError(submitError));
     } finally {
@@ -212,6 +213,7 @@ export function CharacterManager({ user }: { user: User }) {
       }
       setStatusMessage('Personaje eliminado correctamente.');
       await refreshCharacters();
+      window.dispatchEvent(new CustomEvent('teacher-characters-updated'));
     } catch (deleteError) {
       setError(getFriendlyFirestoreError(deleteError));
     } finally {
