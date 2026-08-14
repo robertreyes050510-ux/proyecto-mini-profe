@@ -54,12 +54,14 @@ const initialDraft: LessonDraft = {
 };
 
 export function LessonManager({ user }: { user: User }) {
+  const libraryPreviewCount = 4;
   const [lessons, setLessons] = useState<TeacherLessonRecord[]>([]);
   const [draft, setDraft] = useState<LessonDraft>(initialDraft);
   const [vocabularyText, setVocabularyText] = useState('');
   const [supportPhrasesText, setSupportPhrasesText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorExpanded, setEditorExpanded] = useState(false);
+  const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
     'Cargando lecciones del profesor...',
   );
@@ -85,6 +87,11 @@ export function LessonManager({ user }: { user: User }) {
   useEffect(() => {
     void refreshLessons();
   }, [refreshLessons]);
+
+  const visibleLessons = libraryExpanded
+    ? lessons
+    : lessons.slice(0, libraryPreviewCount);
+  const hiddenLessonsCount = Math.max(lessons.length - libraryPreviewCount, 0);
 
   function resetForm() {
     setDraft(initialDraft);
@@ -216,7 +223,7 @@ export function LessonManager({ user }: { user: User }) {
               }}
               className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
             >
-              Nueva leccion
+              + Nueva leccion
             </button>
           </div>
         </div>
@@ -489,12 +496,27 @@ export function LessonManager({ user }: { user: User }) {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
           Biblioteca curricular
         </p>
-        <h2 className="mt-3 text-2xl font-extrabold">Lecciones guardadas</h2>
-        <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+        <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold">Lecciones guardadas</h2>
+            <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+          </div>
+          {hiddenLessonsCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setLibraryExpanded((current) => !current)}
+              className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+            >
+              {libraryExpanded
+                ? 'Mostrar menos'
+                : `Ver ${hiddenLessonsCount} mas`}
+            </button>
+          ) : null}
+        </div>
         <div className="mt-5 space-y-3">
           {lessons.length ? (
             <div className="grid gap-4 xl:grid-cols-2">
-              {lessons.map((lesson) => (
+              {visibleLessons.map((lesson) => (
                 <details
                   key={lesson.id}
                   className="rounded-[1.25rem] border border-ink/10 p-4"

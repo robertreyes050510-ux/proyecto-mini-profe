@@ -30,11 +30,13 @@ const initialDraft: CharacterDraft = {
 };
 
 export function CharacterManager({ user }: { user: User }) {
+  const libraryPreviewCount = 4;
   const [characters, setCharacters] = useState<TeacherCharacterRecord[]>([]);
   const [draft, setDraft] = useState<CharacterDraft>(initialDraft);
   const [wakeAliasesText, setWakeAliasesText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorExpanded, setEditorExpanded] = useState(false);
+  const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
     'Cargando personajes del peluche...',
   );
@@ -72,6 +74,14 @@ export function CharacterManager({ user }: { user: User }) {
   useEffect(() => {
     void refreshCharacters();
   }, [refreshCharacters]);
+
+  const visibleCharacters = libraryExpanded
+    ? characters
+    : characters.slice(0, libraryPreviewCount);
+  const hiddenCharactersCount = Math.max(
+    characters.length - libraryPreviewCount,
+    0,
+  );
 
   function resetForm() {
     setDraft(initialDraft);
@@ -261,7 +271,7 @@ export function CharacterManager({ user }: { user: User }) {
               }}
               className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
             >
-              Nuevo personaje
+              + Nuevo personaje
             </button>
           </div>
         </div>
@@ -442,12 +452,27 @@ export function CharacterManager({ user }: { user: User }) {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
           Biblioteca del profesor
         </p>
-        <h2 className="mt-3 text-2xl font-extrabold">Personajes guardados</h2>
-        <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+        <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold">Personajes guardados</h2>
+            <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+          </div>
+          {hiddenCharactersCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setLibraryExpanded((current) => !current)}
+              className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+            >
+              {libraryExpanded
+                ? 'Mostrar menos'
+                : `Ver ${hiddenCharactersCount} mas`}
+            </button>
+          ) : null}
+        </div>
         <div className="mt-5 space-y-3">
           {characters.length ? (
             <div className="grid gap-4 xl:grid-cols-2">
-              {characters.map((character) => (
+              {visibleCharacters.map((character) => (
                 <div
                   key={character.id}
                   className="rounded-[1.25rem] border border-ink/10 p-4"

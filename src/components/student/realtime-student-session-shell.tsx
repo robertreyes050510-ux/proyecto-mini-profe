@@ -58,6 +58,9 @@ type NavigatorWithWakeLock = Navigator & {
   };
 };
 
+const PLUSH_EXIT_PIN = process.env.NEXT_PUBLIC_PLUSH_EXIT_PIN || '2468';
+const PLUSH_EXIT_HOLD_MS = 3000;
+
 export function RealtimeStudentSessionShell({
   surface = 'student',
 }: RealtimeStudentSessionShellProps) {
@@ -68,16 +71,18 @@ export function RealtimeStudentSessionShell({
   const [runtimeMessage, setRuntimeMessage] = useState(
     'Cargando configuracion activa del peluche...',
   );
-  const [adultTapCount, setAdultTapCount] = useState(0);
-  const [adultControlsVisible, setAdultControlsVisible] = useState(false);
-  const [armedExitTarget, setArmedExitTarget] = useState<
-    'none' | 'student' | 'teacher'
-  >('none');
+  const [exitModalOpen, setExitModalOpen] = useState(false);
+  const [exitPinValue, setExitPinValue] = useState('');
+  const [exitError, setExitError] = useState('');
+  const [holdActive, setHoldActive] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
   const [screenProtectionStatus, setScreenProtectionStatus] = useState<
     'idle' | 'ready' | 'unsupported' | 'blocked'
   >('idle');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+  const plushExitTimerRef = useRef<number | null>(null);
+  const bypassPopstateRef = useRef(false);
   const realtimeSession = useRealtimeSession(runtime);
 
   const loadRuntime = useCallback(async () => {
@@ -113,43 +118,6 @@ export function RealtimeStudentSessionShell({
   useEffect(() => {
     void loadRuntime();
   }, [loadRuntime]);
-
-  useEffect(() => {
-    if (adultTapCount === 0 || adultControlsVisible) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setAdultTapCount(0);
-    }, 1800);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [adultControlsVisible, adultTapCount]);
-
-  useEffect(() => {
-    if (!adultControlsVisible) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setAdultControlsVisible(false);
-      setArmedExitTarget('none');
-    }, 15000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [adultControlsVisible]);
-
-  useEffect(() => {
-    if (armedExitTarget === 'none') {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setArmedExitTarget('none');
-    }, 7000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [armedExitTarget]);
 
   const releaseWakeLock = useCallback(async () => {
     const currentWakeLock = wakeLockRef.current;
@@ -259,9 +227,38 @@ export function RealtimeStudentSessionShell({
 
   useEffect(() => {
     return () => {
+      if (plushExitTimerRef.current) {
+        clearTimeout(plushExitTimerRef.current);
+      }
       void releaseWakeLock();
     };
   }, [releaseWakeLock]);
+
+  useEffect(() => {
+    if (surface !== 'plush' || typeof window === 'undefined') {
+      return;
+    }
+
+    const handlePopState = () => {
+      if (bypassPopstateRef.current) {
+        return;
+      }
+
+      window.history.pushState({ plushGuard: true }, '', window.location.href);
+      setExitModalOpen(true);
+      setExitError('');
+      setRuntimeMessage(
+        'La salida del modo peluche requiere el PIN del profesor.',
+      );
+    };
+
+    window.history.pushState({ plushGuard: true }, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [surface]);
 
   const currentStateLabel = getStateLabel(realtimeSession.state);
   const currentStateMessage = getStateMessage(realtimeSession.state, runtime?.activeCharacter.name);
@@ -315,43 +312,97 @@ export function RealtimeStudentSessionShell({
         : screenProtectionStatus === 'blocked'
           ? 'No se pudo fijar la pantalla. Puedes reactivarla desde controles del adulto.'
           : 'La proteccion se prepara al abrir la sesion de voz.';
-  const handleAdultUnlockTap = useCallback(() => {
-    if (!isPlushSurface || adultControlsVisible) {
+  const openProtectedExitModal = useCallback(() => {
+    if (!isPlushSurface) {
       return;
     }
 
-    setAdultTapCount((current) => {
-      const next = current + 1;
+    setExitModalOpen(true);
+    setExitPinValue('');
+    setExitError('');
+    setHoldActive(false);
+    setRuntimeMessage(
+      'La salida del modo peluche requiere el PIN del profesor.',
+    );
+  }, [isPlushSurface]);
 
-      if (next >= 5) {
-        setAdultControlsVisible(true);
-        return 0;
+  const clearPlushExitHold = useCallback(() => {
+    if (plushExitTimerRef.current) {
+      clearTimeout(plushExitTimerRef.current);
+      plushExitTimerRef.current = null;
+    }
+    setHoldActive(false);
+  }, []);
+
+  const startPlushExitHold = useCallback(() => {
+    if (!isPlushSurface || exitBusy) {
+      return;
+    }
+
+    clearPlushExitHold();
+    setHoldActive(true);
+    plushExitTimerRef.current = window.setTimeout(() => {
+      plushExitTimerRef.current = null;
+      openProtectedExitModal();
+    }, PLUSH_EXIT_HOLD_MS);
+  }, [clearPlushExitHold, exitBusy, isPlushSurface, openProtectedExitModal]);
+
+  const resolveProtectedExitHref = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return '/teacher';
+    }
+
+    if (document.referrer) {
+      try {
+        const referrerUrl = new URL(document.referrer);
+
+        if (
+          referrerUrl.origin === window.location.origin &&
+          referrerUrl.pathname !== '/plush'
+        ) {
+          return `${referrerUrl.pathname}${referrerUrl.search}${referrerUrl.hash}`;
+        }
+      } catch {
+        return '/teacher';
+      }
+    }
+
+    return '/teacher';
+  }, []);
+
+  const confirmProtectedExit = useCallback(async () => {
+    if (exitPinValue.trim() !== PLUSH_EXIT_PIN) {
+      setExitError('PIN incorrecto. Usa el PIN del profesor para salir.');
+      return;
+    }
+
+    setExitBusy(true);
+    setExitError('');
+
+    try {
+      if (realtimeSession.connectionReady) {
+        await realtimeSession.endSession('ended');
       }
 
-      return next;
-    });
-  }, [adultControlsVisible, isPlushSurface]);
-
-  const handleProtectedNavigation = useCallback(
-    (target: 'student' | 'teacher') => {
-      if (armedExitTarget !== target) {
-        setArmedExitTarget(target);
-        setRuntimeMessage(
-          target === 'student'
-            ? 'Salida a pruebas preparada. Toca otra vez si de verdad quieres salir del modo peluche.'
-            : 'Salida al panel preparada. Toca otra vez si de verdad quieres salir del modo peluche.',
-        );
-        return;
-      }
-
-      window.location.href = target === 'student' ? '/student' : '/teacher';
-    },
-    [armedExitTarget],
-  );
+      bypassPopstateRef.current = true;
+      window.location.href = resolveProtectedExitHref();
+    } finally {
+      setExitBusy(false);
+    }
+  }, [exitPinValue, realtimeSession, resolveProtectedExitHref]);
 
   if (isPlushSurface) {
     return (
-    <main className="min-h-screen select-none overscroll-none bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6 [touch-action:manipulation]">
+      <main className="relative min-h-screen select-none overscroll-none bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6 [touch-action:manipulation]">
+        <button
+          type="button"
+          onPointerDown={startPlushExitHold}
+          onPointerUp={clearPlushExitHold}
+          onPointerLeave={clearPlushExitHold}
+          onPointerCancel={clearPlushExitHold}
+          className="absolute left-0 top-0 z-20 h-20 w-20 opacity-0"
+          aria-label="Salida administrativa oculta"
+        />
         <div className="mx-auto flex max-w-md flex-col gap-5">
           <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
             <div className="space-y-6 text-center">
@@ -359,16 +410,11 @@ export function RealtimeStudentSessionShell({
                 {heroBadge}
               </span>
 
-              <button
-                type="button"
-                onClick={handleAdultUnlockTap}
-                className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12 transition hover:bg-white/15"
-                aria-label="Mostrar controles del adulto"
-              >
+              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12">
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-coral text-3xl font-extrabold text-white">
                   {runtime?.activeCharacter.name?.slice(0, 8) || 'Mini'}
                 </div>
-              </button>
+              </div>
 
               <div className="space-y-3">
                 <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
@@ -381,116 +427,73 @@ export function RealtimeStudentSessionShell({
               </div>
 
               <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => void handleStartSession()}
-                    disabled={!canStartSession}
-                    className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
-                  >
+                <button
+                  type="button"
+                  onClick={() => void handleStartSession()}
+                  disabled={!canStartSession}
+                  className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
+                >
                   {connectLabel}
                 </button>
 
-                  {adultControlsVisible ? (
-                    <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-left">
-                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
-                        Controles del adulto
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-white/75">
-                        Esta zona se oculta sola para evitar toques accidentales
-                        mientras el telefono esta dentro del peluche.
-                      </p>
+                <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-left">
+                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
+                    Proteccion del modo peluche
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    Esta vista no muestra salida visible. Para abrir la salida
+                    administrativa, manten presionada la esquina superior
+                    izquierda durante 3 segundos.
+                  </p>
 
-                      <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/65">
-                          Pantalla del peluche
-                        </p>
-                        <p className="mt-2 text-base font-semibold text-white">
-                          {plushProtectionLabel}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-white/75">
-                          {plushProtectionMessage}
-                        </p>
-                        <p className="mt-2 text-xs leading-5 text-white/55">
-                          {isFullscreen
-                            ? 'La vista esta en pantalla completa.'
-                            : 'Si el navegador lo permite, la pantalla completa se reactiva al iniciar la sesion.'}
-                        </p>
-                      </div>
+                  <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/65">
+                      Pantalla del peluche
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-white">
+                      {plushProtectionLabel}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-white/75">
+                      {plushProtectionMessage}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-white/55">
+                      {isFullscreen
+                        ? 'La vista esta en pantalla completa.'
+                        : 'Si el navegador lo permite, la pantalla completa se reactiva al iniciar la sesion.'}
+                    </p>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => void preparePlushSurface()}
-                        className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
-                      >
-                        Reactivar proteccion
-                      </button>
+                  <button
+                    type="button"
+                    onClick={() => void preparePlushSurface()}
+                    className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
+                  >
+                    Reforzar proteccion de pantalla
+                  </button>
 
-                      <button
-                        type="button"
-                        onClick={() => void realtimeSession.endSession('ended')}
-                      disabled={!canEndSession}
-                      className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
+                  <button
+                    type="button"
+                    onClick={() => void realtimeSession.endSession('ended')}
+                    disabled={!canEndSession}
+                    className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Poner peluche en reposo
                   </button>
 
                   <p className="mt-4 text-xs leading-5 text-white/55">
-                    Cierra la conversacion activa y deja el modo peluche listo
-                    para volver a usarse sin salir de esta pantalla.
+                    El boton atras y la salida manual quedan protegidos con el
+                    PIN del profesor para evitar cierres accidentales.
                   </p>
+                </div>
 
-                  <p className="mt-3 text-xs leading-5 text-white/45">
-                    Para salir del modo peluche, primero preparas la salida y
-                    luego confirmas con un segundo toque.
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-center">
+                  <p className="text-sm leading-6 text-white/70">{helperText}</p>
+                  <p className="mt-2 text-xs leading-5 text-white/55">
+                    {holdActive
+                      ? 'Manteniendo esquina administrativa... suelta para cancelar.'
+                      : 'No hay boton de salida visible para el estudiante.'}
                   </p>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => handleProtectedNavigation('student')}
-                        className="rounded-full bg-white/10 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-white/15"
-                      >
-                        {armedExitTarget === 'student'
-                          ? 'Confirmar salida a pruebas'
-                          : 'Preparar salida a pruebas'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleProtectedNavigation('teacher')}
-                        className="rounded-full bg-white/10 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-white/15"
-                      >
-                        {armedExitTarget === 'teacher'
-                          ? 'Confirmar salida al panel'
-                          : 'Preparar salida al panel'}
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdultControlsVisible(false);
-                        setAdultTapCount(0);
-                        setArmedExitTarget('none');
-                      }}
-                      className="mt-3 w-full rounded-full bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15"
-                    >
-                      Ocultar controles
-                    </button>
-                  </div>
-                ) : (
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-center">
-                      <p className="text-sm leading-6 text-white/70">
-                        {helperText}
-                      </p>
-                <p className="mt-2 text-xs leading-5 text-white/55">
-                  Controles ocultos para evitar toques accidentales. La
-                  proteccion de pantalla se activa al iniciar la sesion y
-                  puedes tocar el avatar 5 veces para mostrar los controles
-                  del adulto sin exponer una salida visible para el
-                  estudiante.
-                </p>
-                    </div>
-                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -571,6 +574,68 @@ export function RealtimeStudentSessionShell({
             </section>
           )}
         </div>
+
+        {exitModalOpen ? (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/55 px-4">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-card">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-coral">
+                Salida administrativa
+              </p>
+              <h2 className="mt-3 text-2xl font-extrabold text-ink">
+                Salir del modo peluche
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-ink/70">
+                Introduce el PIN del profesor para volver al panel anterior.
+              </p>
+
+              <label className="mt-5 block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  PIN del profesor
+                </span>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={exitPinValue}
+                  onChange={(event) => {
+                    setExitPinValue(event.target.value);
+                    setExitError('');
+                  }}
+                  className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="PIN"
+                  autoFocus
+                />
+              </label>
+
+              {exitError ? (
+                <p className="mt-4 rounded-2xl bg-[#fff1eb] px-4 py-3 text-sm font-bold text-[#b84e28]">
+                  {exitError}
+                </p>
+              ) : null}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExitModalOpen(false);
+                    setExitPinValue('');
+                    setExitError('');
+                  }}
+                  className="rounded-full border border-ink/10 px-4 py-3 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmProtectedExit()}
+                  disabled={exitBusy}
+                  className="rounded-full bg-coral px-4 py-3 text-sm font-bold text-white transition hover:bg-[#ef7444] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {exitBusy ? 'Verificando...' : 'Salir del modo peluche'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     );
   }
