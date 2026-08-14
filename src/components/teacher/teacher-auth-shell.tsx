@@ -126,30 +126,38 @@ export function TeacherAuthShell() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff9f0] px-6 py-10 text-ink">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+    <main className="min-h-screen bg-[#fff9f0] px-6 py-6 text-ink md:py-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <AppModeNav currentLabel="Aqui ajustas reglas, contenido y activaciones antes de pasar al alumno o al peluche." />
 
-        <section className="rounded-[2rem] bg-white p-8 shadow-card md:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
-            <div className="space-y-5">
-              <span className="inline-flex rounded-full bg-sun px-4 py-2 text-sm font-bold uppercase tracking-[0.2em]">
+        <section className="rounded-[1.75rem] bg-white px-6 py-5 shadow-card">
+          <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <div className="space-y-3">
+              <span className="inline-flex rounded-full bg-sun px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em]">
                 Panel del profesor
               </span>
-              <h1 className="text-4xl font-extrabold md:text-5xl">
-                Prepara a Paco para hoy sin entrar en menus tecnicos.
+              <h1 className="text-3xl font-extrabold md:text-4xl">
+                Vista compacta para preparar la clase y activar el peluche.
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-ink/75">
-                La idea principal de esta pantalla es que cada manana puedas elegir
-                grupo, tema, objetivo y estilo de conversacion, y luego activar el
-                peluche. Lo mas fino queda mas abajo en configuracion avanzada.
+              <p className="max-w-2xl text-base leading-7 text-ink/72">
+                Priorizamos lo diario arriba y dejamos la biblioteca y los ajustes
+                finos mas abajo o colapsados.
               </p>
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-coral">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-coral">
                 Firebase activo: {getFirebaseProjectId()}
               </p>
             </div>
 
-            <FirebaseStatusCard />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {modules.slice(0, 3).map((module) => (
+                <div
+                  key={module}
+                  className="rounded-[1.25rem] bg-[#f8fbff] px-4 py-4 text-sm font-bold leading-6 text-ink/80"
+                >
+                  {module}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -282,78 +290,51 @@ export function TeacherAuthShell() {
 
         {status === 'signed-in' && user ? (
           <>
-            <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <article className="rounded-[2rem] bg-white p-8 shadow-card">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-                      Vista diaria
-                    </p>
-                    <h2 className="mt-4 text-3xl font-extrabold">
-                      Configura la clase y activa el peluche.
-                    </h2>
-                    <p className="mt-3 text-base leading-7 text-ink/70">
-                      Esta parte quiere quedarse corta: eliges lo importante para
-                      hoy y dejas los ajustes finos guardados o escondidos.
-                    </p>
-                  </div>
+            <section className="rounded-[1.75rem] bg-white px-6 py-5 shadow-card">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
+                    Panel listo
+                  </p>
+                  <h2 className="text-2xl font-extrabold md:text-3xl">
+                    Lo importante de hoy primero.
+                  </h2>
+                  <p className="max-w-3xl text-sm leading-6 text-ink/70">
+                    Usa la activacion del peluche arriba. Baja solo cuando quieras
+                    crear o editar una leccion o un personaje.
+                  </p>
+                </div>
 
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-full bg-[#f8fbff] px-4 py-2 text-sm font-bold text-ink/80">
+                    {user.email}
+                  </div>
+                  <div className="rounded-full bg-[#f8fbff] px-4 py-2 text-sm font-bold text-ink/80">
+                    Firebase conectado
+                  </div>
                   <button
                     type="button"
                     onClick={handleSignOut}
                     disabled={busy}
-                    className="rounded-full border border-ink/10 px-5 py-3 text-sm font-bold text-ink transition hover:border-coral hover:text-coral disabled:cursor-not-allowed disabled:opacity-70"
+                    className="rounded-full border border-ink/10 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     Cerrar sesion
                   </button>
                 </div>
-
-                <div className="mt-6 space-y-4">
-                  <div className="rounded-[1.5rem] border border-ink/10 p-5">
-                    <p className="text-sm font-bold text-ink/55">Correo activo</p>
-                    <p className="mt-2 text-2xl font-extrabold">{user.email}</p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-ink/10 p-5">
-                    <p className="text-sm font-bold text-ink/55">Objetivo del panel</p>
-                    <p className="mt-2 text-2xl font-extrabold">
-                      Menos carga diaria
-                    </p>
-                    <p className="mt-2 text-base leading-7 text-ink/70">
-                      Tema, objetivo, expresiones clave y activacion primero.
-                    </p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-ink/10 p-5">
-                    <p className="text-sm font-bold text-ink/55">Ajustes finos</p>
-                    <p className="mt-2 text-2xl font-extrabold">
-                      Debajo y ocultables
-                    </p>
-                    <p className="mt-2 text-base leading-7 text-ink/70">
-                      Voz, wake phrase, fallback y limites siguen disponibles.
-                    </p>
-                  </div>
-                </div>
-              </article>
-
-              <article className="rounded-[2rem] bg-white p-8 shadow-card">
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-                  Modulos preparados
-                </p>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  {modules.map((module) => (
-                    <div
-                      key={module}
-                      className="rounded-[1.5rem] bg-[#f8fbff] p-5 text-base font-bold"
-                    >
-                      {module}
-                    </div>
-                  ))}
-                </div>
-              </article>
+              </div>
             </section>
 
-            <ActiveAssignmentManager user={user} />
-            <LessonManager user={user} />
-            <CharacterManager user={user} />
+            <section className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+              <div className="flex flex-col gap-6">
+                <ActiveAssignmentManager user={user} />
+                <LessonManager user={user} />
+                <CharacterManager user={user} />
+              </div>
+
+              <div className="hidden lg:block">
+                <FirebaseStatusCard />
+              </div>
+            </section>
           </>
         ) : null}
       </div>

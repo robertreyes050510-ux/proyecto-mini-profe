@@ -119,16 +119,15 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
-        <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
           Clase de hoy
         </p>
-        <h2 className="mt-4 text-3xl font-extrabold">
-          Elige que combinacion quieres activar en el peluche
+        <h2 className="mt-3 text-2xl font-extrabold">
+          Activa una combinacion lista
         </h2>
-        <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
-          Este es el paso que deberias usar casi todos los dias. Selecciona el
-          personaje, el tema y activa la configuracion que usara el peluche.
+        <p className="mt-2 max-w-xl text-sm leading-6 text-ink/70">
+          Personaje, leccion y publicar. Sin pasos extra.
         </p>
 
         {!isReadyToAssign ? (
@@ -137,48 +136,50 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
             una configuracion activa.
           </div>
         ) : (
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-ink/70">
-                Personaje para hoy
-              </span>
-              <select
-                value={activeCharacterId}
-                onChange={(event) => setActiveCharacterId(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-                required
-              >
-                <option value="" disabled>
-                  Selecciona un personaje
-                </option>
-                {characters.map((character) => (
-                  <option key={character.id} value={character.id}>
-                    {character.name} · {character.wakePhrase}
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Personaje para hoy
+                </span>
+                <select
+                  value={activeCharacterId}
+                  onChange={(event) => setActiveCharacterId(event.target.value)}
+                  className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+                  required
+                >
+                  <option value="" disabled>
+                    Selecciona un personaje
                   </option>
-                ))}
-              </select>
-            </label>
+                  {characters.map((character) => (
+                    <option key={character.id} value={character.id}>
+                      {character.name} · {character.wakePhrase}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-ink/70">
-                Leccion para hoy
-              </span>
-              <select
-                value={activeLessonId}
-                onChange={(event) => setActiveLessonId(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
-                required
-              >
-                <option value="" disabled>
-                  Selecciona una leccion
-                </option>
-                {lessons.map((lesson) => (
-                  <option key={lesson.id} value={lesson.id}>
-                    {lesson.topic} · {lesson.gradeLevel}
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Leccion para hoy
+                </span>
+                <select
+                  value={activeLessonId}
+                  onChange={(event) => setActiveLessonId(event.target.value)}
+                  className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+                  required
+                >
+                  <option value="" disabled>
+                    Selecciona una leccion
                   </option>
-                ))}
-              </select>
-            </label>
+                  {lessons.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {lesson.topic} · {lesson.gradeLevel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             {error ? (
               <p className="rounded-2xl bg-[#fff1eb] px-4 py-3 text-sm font-bold text-[#b84e28]">
@@ -197,32 +198,38 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
         )}
       </article>
 
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
-        <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
-          Vista previa
-        </p>
-        <h2 className="mt-4 text-3xl font-extrabold">Lo que usara el peluche</h2>
-        <p className="mt-4 text-base leading-7 text-ink/70">{statusMessage}</p>
-
-        <div className="mt-6 space-y-4">
-          <div className="rounded-[1.5rem] border border-ink/10 p-5">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card lg:sticky lg:top-6 lg:self-start">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
+              Vista previa
+            </p>
+            <h2 className="mt-3 text-2xl font-extrabold">Lo que usara el peluche</h2>
+            <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+          </div>
+          <span className="rounded-full bg-[#f8fbff] px-3 py-1.5 text-xs font-bold text-ink/65">
+            Runtime actual
+          </span>
+        </div>
+        <div className="mt-5 space-y-3">
+          <div className="rounded-[1.25rem] border border-ink/10 p-4">
             <p className="text-sm font-bold text-ink/55">Personaje activo</p>
-            <p className="mt-2 text-2xl font-extrabold">
+            <p className="mt-1 text-xl font-extrabold">
               {activeCharacter?.name ?? 'Sin seleccionar'}
             </p>
-            <p className="mt-2 text-base leading-7 text-ink/70">
+            <p className="mt-1 text-sm leading-6 text-ink/70">
               {activeCharacter
                 ? `Frase de activacion: ${activeCharacter.wakePhrase}`
                 : 'Selecciona un personaje para la activacion por voz.'}
             </p>
           </div>
 
-          <div className="rounded-[1.5rem] border border-ink/10 p-5">
+          <div className="rounded-[1.25rem] border border-ink/10 p-4">
             <p className="text-sm font-bold text-ink/55">Leccion activa</p>
-            <p className="mt-2 text-2xl font-extrabold">
+            <p className="mt-1 text-xl font-extrabold">
               {activeLesson?.topic ?? 'Sin seleccionar'}
             </p>
-            <p className="mt-2 text-base leading-7 text-ink/70">
+            <p className="mt-1 text-sm leading-6 text-ink/70">
               {activeLesson
                 ? `${activeLesson.gradeLevel} · ${activeLesson.allowedVocabulary.length} palabras y expresiones clave`
                 : 'Selecciona una leccion para marcar tema, objetivo y lenguaje clave.'}
@@ -230,12 +237,12 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
           </div>
 
           {activeLesson ? (
-            <div className="rounded-[1.5rem] border border-ink/10 p-5">
+            <div className="rounded-[1.25rem] border border-ink/10 p-4">
               <p className="text-sm font-bold text-ink/55">Objetivo e idioma</p>
-              <p className="mt-2 text-base leading-7 text-ink/75">
+              <p className="mt-1 text-sm leading-6 text-ink/75">
                 {activeLesson.objective}
               </p>
-              <p className="mt-3 text-sm font-bold text-coral">
+              <p className="mt-2 text-sm font-bold text-coral">
                 {activeLesson.englishSupportAllowed
                   ? 'Espanol con apoyo breve en ingles.'
                   : 'Espanol como idioma principal de la conversacion.'}

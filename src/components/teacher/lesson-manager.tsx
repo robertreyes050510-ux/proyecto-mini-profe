@@ -59,6 +59,7 @@ export function LessonManager({ user }: { user: User }) {
   const [vocabularyText, setVocabularyText] = useState('');
   const [supportPhrasesText, setSupportPhrasesText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorExpanded, setEditorExpanded] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
     'Cargando lecciones del profesor...',
   );
@@ -90,6 +91,7 @@ export function LessonManager({ user }: { user: User }) {
     setVocabularyText('');
     setSupportPhrasesText('');
     setEditingId(null);
+    setEditorExpanded(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -131,6 +133,7 @@ export function LessonManager({ user }: { user: User }) {
   }
 
   function handleEdit(lesson: TeacherLessonRecord) {
+    setEditorExpanded(true);
     setEditingId(lesson.id);
     setDraft({
       gradeLevel: lesson.gradeLevel,
@@ -178,30 +181,53 @@ export function LessonManager({ user }: { user: User }) {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
               Lecciones
             </p>
-            <h2 className="mt-4 text-3xl font-extrabold">
+            <h2 className="mt-3 text-2xl font-extrabold">
               Prepara el contenido de hoy
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-ink/70">
               Esta pantalla deberia resolver casi todo lo diario: grupo, tema,
               objetivo, palabras clave, apoyo de idioma y libertad conversacional.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={resetForm}
-            className="rounded-full border border-ink/10 px-5 py-3 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
-          >
-            Nueva leccion
-          </button>
+          <div className="flex items-center gap-3">
+            {editorExpanded ? (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+              >
+                Cerrar
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setEditorExpanded(true);
+                setEditingId(null);
+                setDraft(initialDraft);
+                setVocabularyText('');
+                setSupportPhrasesText('');
+              }}
+              className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+            >
+              Nueva leccion
+            </button>
+          </div>
         </div>
 
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        {!editorExpanded ? (
+          <div className="mt-5 rounded-[1.25rem] border border-dashed border-ink/15 p-4 text-sm leading-6 text-ink/60">
+            La biblioteca queda visible por defecto. Abre el editor solo cuando
+            quieras crear o corregir una leccion.
+          </div>
+        ) : (
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
@@ -254,7 +280,7 @@ export function LessonManager({ user }: { user: User }) {
                   objective: event.target.value,
                 }))
               }
-              className="min-h-24 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              className="min-h-20 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
               placeholder="Reconocer y pronunciar nombres de animales en espanol."
               required
             />
@@ -267,7 +293,7 @@ export function LessonManager({ user }: { user: User }) {
             <textarea
               value={vocabularyText}
               onChange={(event) => setVocabularyText(event.target.value)}
-              className="min-h-40 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
               placeholder={'perro\ngato\nconejo\nvaca\ncaballo'}
               required
             />
@@ -283,7 +309,7 @@ export function LessonManager({ user }: { user: User }) {
             <textarea
               value={supportPhrasesText}
               onChange={(event) => setSupportPhrasesText(event.target.value)}
-              className="min-h-32 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              className="min-h-24 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
               placeholder={'Muy bien\nIntentalo otra vez\nEn espanol decimos...\nExcelente trabajo'}
             />
             <p className="mt-2 text-sm text-ink/55">
@@ -360,7 +386,7 @@ export function LessonManager({ user }: { user: User }) {
             </span>
           </label>
 
-          <details className="rounded-[1.5rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
+          <details className="rounded-[1.25rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
             <summary className="cursor-pointer list-none text-base font-bold text-ink">
               Configuracion avanzada de la leccion
             </summary>
@@ -456,26 +482,27 @@ export function LessonManager({ user }: { user: User }) {
                 : 'Crear leccion'}
           </button>
         </form>
+        )}
       </article>
 
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
-        <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
           Biblioteca curricular
         </p>
-        <h2 className="mt-4 text-3xl font-extrabold">Lecciones guardadas</h2>
-        <p className="mt-4 text-base leading-7 text-ink/70">{statusMessage}</p>
-        <div className="mt-6 space-y-4">
+        <h2 className="mt-3 text-2xl font-extrabold">Lecciones guardadas</h2>
+        <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+        <div className="mt-5 space-y-3">
           {lessons.length ? (
             lessons.map((lesson) => (
               <div
                 key={lesson.id}
-                className="rounded-[1.5rem] border border-ink/10 p-5"
+                className="rounded-[1.25rem] border border-ink/10 p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm font-bold text-ink/55">Tema</p>
-                      <p className="text-2xl font-extrabold">{lesson.topic}</p>
+                      <p className="text-xl font-extrabold">{lesson.topic}</p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">

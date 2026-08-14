@@ -34,6 +34,7 @@ export function CharacterManager({ user }: { user: User }) {
   const [draft, setDraft] = useState<CharacterDraft>(initialDraft);
   const [wakeAliasesText, setWakeAliasesText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorExpanded, setEditorExpanded] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
     'Cargando personajes del peluche...',
   );
@@ -76,6 +77,7 @@ export function CharacterManager({ user }: { user: User }) {
     setDraft(initialDraft);
     setWakeAliasesText('');
     setEditingId(null);
+    setEditorExpanded(false);
     setPreviewMessage(
       'Pulsa el boton para escuchar una muestra corta antes de guardar.',
     );
@@ -187,6 +189,7 @@ export function CharacterManager({ user }: { user: User }) {
   }
 
   function handleEdit(character: TeacherCharacterRecord) {
+    setEditorExpanded(true);
     setEditingId(character.id);
     setDraft({
       name: character.name,
@@ -223,31 +226,53 @@ export function CharacterManager({ user }: { user: User }) {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
               Personajes
             </p>
-            <h2 className="mt-4 text-3xl font-extrabold">
+            <h2 className="mt-3 text-2xl font-extrabold">
               Personalidad y voz de Paco
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-ink/70">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-ink/70">
               Aqui guardas personajes reutilizables. Lo normal es tocar nombre,
               personalidad y voz; la activacion y las variantes quedan como ajuste
               avanzado cuando haga falta.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={resetForm}
-            className="rounded-full border border-ink/10 px-5 py-3 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
-          >
-            Nuevo personaje
-          </button>
+          <div className="flex items-center gap-3">
+            {editorExpanded ? (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+              >
+                Cerrar
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setEditorExpanded(true);
+                setEditingId(null);
+                setDraft(initialDraft);
+                setWakeAliasesText('');
+              }}
+              className="rounded-full border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+            >
+              Nuevo personaje
+            </button>
+          </div>
         </div>
 
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        {!editorExpanded ? (
+          <div className="mt-5 rounded-[1.25rem] border border-dashed border-ink/15 p-4 text-sm leading-6 text-ink/60">
+            La biblioteca queda visible por defecto. Abre el editor solo cuando
+            quieras crear o corregir un personaje.
+          </div>
+        ) : (
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-ink/70">
               Nombre del personaje
@@ -276,7 +301,7 @@ export function CharacterManager({ user }: { user: User }) {
                   personality: event.target.value,
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              className="min-h-24 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
               placeholder="Alegre, paciente y motivador."
               required
             />
@@ -346,7 +371,7 @@ export function CharacterManager({ user }: { user: User }) {
             </label>
           </div>
 
-          <details className="rounded-[1.5rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
+          <details className="rounded-[1.25rem] border border-ink/10 bg-[#fcfdfd] px-5 py-4">
             <summary className="cursor-pointer list-none text-base font-bold text-ink">
               Configuracion avanzada del personaje
             </summary>
@@ -410,26 +435,27 @@ export function CharacterManager({ user }: { user: User }) {
                 : 'Crear personaje'}
           </button>
         </form>
+        )}
       </article>
 
-      <article className="rounded-[2rem] bg-white p-8 shadow-card">
-        <p className="text-sm font-bold uppercase tracking-[0.2em] text-coral">
+      <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">
           Biblioteca del profesor
         </p>
-        <h2 className="mt-4 text-3xl font-extrabold">Personajes guardados</h2>
-        <p className="mt-4 text-base leading-7 text-ink/70">{statusMessage}</p>
-        <div className="mt-6 space-y-4">
+        <h2 className="mt-3 text-2xl font-extrabold">Personajes guardados</h2>
+        <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
+        <div className="mt-5 space-y-3">
           {characters.length ? (
             characters.map((character) => (
               <div
                 key={character.id}
-                className="rounded-[1.5rem] border border-ink/10 p-5"
+                className="rounded-[1.25rem] border border-ink/10 p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm font-bold text-ink/55">Nombre</p>
-                      <p className="text-2xl font-extrabold">{character.name}</p>
+                      <p className="text-xl font-extrabold">{character.name}</p>
                     </div>
                     <div>
                       <p className="text-sm font-bold text-ink/55">
