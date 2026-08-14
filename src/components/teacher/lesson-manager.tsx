@@ -180,7 +180,7 @@ export function LessonManager({ user }: { user: User }) {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+    <section className="flex flex-col gap-6">
       <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -493,47 +493,64 @@ export function LessonManager({ user }: { user: User }) {
         <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
         <div className="mt-5 space-y-3">
           {lessons.length ? (
-            lessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="rounded-[1.25rem] border border-ink/10 p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">Tema</p>
-                      <p className="text-xl font-extrabold">{lesson.topic}</p>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {lessons.map((lesson) => (
+                <details
+                  key={lesson.id}
+                  className="rounded-[1.25rem] border border-ink/10 p-4"
+                >
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 space-y-3">
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Tema</p>
+                          <p className="text-xl font-extrabold">{lesson.topic}</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
+                            <p className="text-sm font-bold text-ink/55">Nivel</p>
+                            <p className="mt-1 font-bold">{lesson.gradeLevel}</p>
+                          </div>
+                          <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
+                            <p className="text-sm font-bold text-ink/55">Modo</p>
+                            <p className="mt-1 font-bold">
+                              {formatResponseMode(lesson.responseMode)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
+                            <p className="text-sm font-bold text-ink/55">Libertad</p>
+                            <p className="mt-1 font-bold">
+                              {formatFreedomLevel(lesson.freedomLevel)}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Objetivo</p>
+                          <p className="mt-1 line-clamp-2 text-sm leading-6 text-ink/75">
+                            {lesson.objective}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            handleEdit(lesson);
+                          }}
+                          className="rounded-full border border-ink/10 px-4 py-2 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+                        >
+                          Editar
+                        </button>
+                        <span className="text-sm font-bold text-coral">
+                          Ver detalles
+                        </span>
+                      </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Nivel</p>
-                        <p className="mt-1 font-bold">{lesson.gradeLevel}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Oraciones</p>
-                        <p className="mt-1 font-bold">
-                          {lesson.maxResponseSentences}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Modo</p>
-                        <p className="mt-1 font-bold">
-                          {formatResponseMode(lesson.responseMode)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Libertad</p>
-                        <p className="mt-1 font-bold">
-                          {formatFreedomLevel(lesson.freedomLevel)}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">Objetivo</p>
-                      <p className="text-base leading-7 text-ink/75">
-                        {lesson.objective}
-                      </p>
-                    </div>
+                  </summary>
+
+                  <div className="mt-4 space-y-4 border-t border-ink/10 pt-4">
                     <div>
                       <p className="text-sm font-bold text-ink/55">
                         Palabras y expresiones clave
@@ -549,6 +566,7 @@ export function LessonManager({ user }: { user: User }) {
                         ))}
                       </div>
                     </div>
+
                     <div>
                       <p className="text-sm font-bold text-ink/55">
                         Frases que quiero reforzar
@@ -570,35 +588,27 @@ export function LessonManager({ user }: { user: User }) {
                         )}
                       </div>
                     </div>
+
                     <div>
-                      <p className="text-sm font-bold text-ink/55">
-                        Fallback de ingles
-                      </p>
-                      <p className="text-base leading-7 text-ink/75">
+                      <p className="text-sm font-bold text-ink/55">Fallback de ingles</p>
+                      <p className="mt-1 text-sm leading-6 text-ink/75">
                         {lesson.englishFallbackText}
                       </p>
                     </div>
-                  </div>
 
-                  <div className="flex flex-col gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(lesson)}
-                      className="rounded-full border border-ink/10 px-4 py-2 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(lesson.id)}
-                      className="rounded-full border border-[#f2c1b5] px-4 py-2 text-sm font-bold text-[#b84e28] transition hover:bg-[#fff1eb]"
-                    >
-                      Eliminar
-                    </button>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(lesson.id)}
+                        className="rounded-full border border-[#f2c1b5] px-4 py-2 text-sm font-bold text-[#b84e28] transition hover:bg-[#fff1eb]"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
+                </details>
+              ))}
+            </div>
           ) : (
             <div className="rounded-[1.5rem] border border-dashed border-ink/15 p-6 text-base leading-7 text-ink/60">
               Cuando crees la primera leccion, apareceran aqui el tema, el nivel y

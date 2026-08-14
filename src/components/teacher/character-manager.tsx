@@ -225,7 +225,7 @@ export function CharacterManager({ user }: { user: User }) {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+    <section className="flex flex-col gap-6">
       <article className="rounded-[1.75rem] bg-white p-6 shadow-card">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -446,88 +446,92 @@ export function CharacterManager({ user }: { user: User }) {
         <p className="mt-2 text-sm leading-6 text-ink/70">{statusMessage}</p>
         <div className="mt-5 space-y-3">
           {characters.length ? (
-            characters.map((character) => (
-              <div
-                key={character.id}
-                className="rounded-[1.25rem] border border-ink/10 p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">Nombre</p>
-                      <p className="text-xl font-extrabold">{character.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">
-                        Frase de activacion
-                      </p>
-                      <p className="text-lg font-bold text-coral">
-                        {character.wakePhrase}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">
-                        Variantes aceptadas
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {character.wakeAliases?.length ? (
-                          character.wakeAliases.map((alias) => (
-                            <span
-                              key={alias}
-                              className="rounded-full bg-[#eef9ff] px-3 py-1 text-sm font-bold text-[#2d6d96]"
-                            >
-                              {alias}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-ink/60">
-                            Sin variantes adicionales.
-                          </span>
-                        )}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {characters.map((character) => (
+                <div
+                  key={character.id}
+                  className="rounded-[1.25rem] border border-ink/10 p-4"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Nombre</p>
+                          <p className="mt-1 text-xl font-extrabold">{character.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Voz</p>
+                          <p className="mt-1 font-bold">
+                            {getRealtimeVoiceMeta(character.voiceId).label}
+                          </p>
+                          <p className="text-sm text-ink/55">
+                            {getRealtimeVoiceMeta(character.voiceId).description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px]">
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">
+                            Frase de activacion
+                          </p>
+                          <p className="mt-1 font-bold text-coral">
+                            {character.wakePhrase}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Personalidad</p>
+                          <p className="mt-1 line-clamp-2 text-sm leading-6 text-ink/75">
+                            {character.personality}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ink/55">Velocidad</p>
+                          <p className="mt-1 font-bold">{character.voiceSpeed}</p>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-ink/55">Personalidad</p>
-                      <p className="text-base leading-7 text-ink/75">
-                        {character.personality}
-                      </p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Voz</p>
-                        <p className="mt-1 font-bold">
-                          {getRealtimeVoiceMeta(character.voiceId).label}
-                        </p>
-                        <p className="text-sm text-ink/55">
-                          {getRealtimeVoiceMeta(character.voiceId).description}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
-                        <p className="text-sm font-bold text-ink/55">Velocidad</p>
-                        <p className="mt-1 font-bold">{character.voiceSpeed}</p>
-                      </div>
+
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(character)}
+                        className="rounded-full border border-ink/10 px-4 py-2 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(character.id)}
+                        className="rounded-full border border-[#f2c1b5] px-4 py-2 text-sm font-bold text-[#b84e28] transition hover:bg-[#fff1eb]"
+                      >
+                        Eliminar
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(character)}
-                      className="rounded-full border border-ink/10 px-4 py-2 text-sm font-bold text-ink transition hover:border-coral hover:text-coral"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(character.id)}
-                      className="rounded-full border border-[#f2c1b5] px-4 py-2 text-sm font-bold text-[#b84e28] transition hover:bg-[#fff1eb]"
-                    >
-                      Eliminar
-                    </button>
+                  <div className="mt-4 border-t border-ink/10 pt-4">
+                    <p className="text-sm font-bold text-ink/55">Variantes aceptadas</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {character.wakeAliases?.length ? (
+                        character.wakeAliases.map((alias) => (
+                          <span
+                            key={alias}
+                            className="rounded-full bg-[#eef9ff] px-3 py-1 text-sm font-bold text-[#2d6d96]"
+                          >
+                            {alias}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-ink/60">
+                          Sin variantes adicionales.
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
             <div className="rounded-[1.5rem] border border-dashed border-ink/15 p-6 text-base leading-7 text-ink/60">
               Cuando crees el primer personaje, apareceran aqui su nombre, voz y

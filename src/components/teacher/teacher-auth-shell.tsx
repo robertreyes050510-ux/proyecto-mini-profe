@@ -324,16 +324,13 @@ export function TeacherAuthShell() {
               </div>
             </section>
 
-            <section className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-              <div className="flex flex-col gap-6">
-                <ActiveAssignmentManager user={user} />
-                <LessonManager user={user} />
-                <CharacterManager user={user} />
-              </div>
-
-              <div className="hidden lg:block">
+            <section className="flex flex-col gap-6">
+              <ActiveAssignmentManager user={user} />
+              <div className="lg:hidden">
                 <FirebaseStatusCard />
               </div>
+              <LessonManager user={user} />
+              <CharacterManager user={user} />
             </section>
           </>
         ) : null}
