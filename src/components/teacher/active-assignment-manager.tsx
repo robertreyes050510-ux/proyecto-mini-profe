@@ -70,19 +70,27 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
   }, [refreshAssignmentData]);
 
   useEffect(() => {
-    const handleCharactersUpdated = () => {
+    const handleTeacherConfigUpdated = () => {
       void refreshAssignmentData();
     };
 
     window.addEventListener(
       'teacher-characters-updated',
-      handleCharactersUpdated,
+      handleTeacherConfigUpdated,
+    );
+    window.addEventListener(
+      'teacher-lessons-updated',
+      handleTeacherConfigUpdated,
     );
 
     return () => {
       window.removeEventListener(
         'teacher-characters-updated',
-        handleCharactersUpdated,
+        handleTeacherConfigUpdated,
+      );
+      window.removeEventListener(
+        'teacher-lessons-updated',
+        handleTeacherConfigUpdated,
       );
     };
   }, [refreshAssignmentData]);

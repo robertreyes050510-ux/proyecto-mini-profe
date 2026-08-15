@@ -132,6 +132,7 @@ export function LessonManager({ user }: { user: User }) {
 
       resetForm();
       await refreshLessons();
+      window.dispatchEvent(new CustomEvent('teacher-lessons-updated'));
     } catch (submitError) {
       setError(getFriendlyFirestoreError(submitError));
     } finally {
@@ -179,6 +180,7 @@ export function LessonManager({ user }: { user: User }) {
       }
       setStatusMessage('Leccion eliminada correctamente.');
       await refreshLessons();
+      window.dispatchEvent(new CustomEvent('teacher-lessons-updated'));
     } catch (deleteError) {
       setError(getFriendlyFirestoreError(deleteError));
     } finally {

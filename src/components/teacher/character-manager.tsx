@@ -176,6 +176,7 @@ export function CharacterManager({ user }: { user: User }) {
 
     const nextDraft: CharacterDraft = {
       ...draft,
+      wakePhrase: draft.wakePhrase.trim() || `Hola ${draft.name.trim()}`,
       wakeAliases: normalizedAliases,
     };
 
@@ -406,8 +407,11 @@ export function CharacterManager({ user }: { user: User }) {
                   }
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
                   placeholder="Hola Paco"
-                  required
                 />
+                <p className="mt-2 text-sm text-ink/55">
+                  Si lo dejas vacio, se guardara automaticamente como Hola{' '}
+                  {draft.name || 'Nombre'}.
+                </p>
               </label>
 
               <label className="block">
