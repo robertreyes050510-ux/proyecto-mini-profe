@@ -58,7 +58,8 @@ type NavigatorWithWakeLock = Navigator & {
   };
 };
 
-const PLUSH_EXIT_PIN = process.env.NEXT_PUBLIC_PLUSH_EXIT_PIN || '2468';
+const PLUSH_EXIT_PIN = process.env.NEXT_PUBLIC_PLUSH_EXIT_PIN || '0505';
+const PLUSH_LEGACY_EXIT_PIN = '2468';
 const PLUSH_EXIT_HOLD_MS = 3000;
 
 type PlushAdminAction = 'exit' | 'rest';
@@ -80,6 +81,9 @@ export function RealtimeStudentSessionShell({
   const [exitError, setExitError] = useState('');
   const [holdActive, setHoldActive] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
+  const [plushAdminMessage, setPlushAdminMessage] = useState(
+    'Mantener 3 segundos abre la salida protegida del profesor.',
+  );
   const [screenProtectionStatus, setScreenProtectionStatus] = useState<
     'idle' | 'ready' | 'unsupported' | 'blocked'
   >('idle');
@@ -189,13 +193,6 @@ export function RealtimeStudentSessionShell({
     await requestWakeLock();
   }, [requestFullscreen, requestWakeLock, surface]);
 
-  const handleReinforceProtection = useCallback(async () => {
-    await preparePlushSurface();
-    setRuntimeMessage(
-      'Proteccion reintentada. Si el navegador lo permite, la pantalla queda despierta y en pantalla completa.',
-    );
-  }, [preparePlushSurface]);
-
   const handleStartSession = useCallback(async () => {
     await preparePlushSurface();
     await realtimeSession.startSession();
@@ -259,7 +256,7 @@ export function RealtimeStudentSessionShell({
       setPendingAdminAction('exit');
       setExitModalOpen(true);
       setExitError('');
-      setRuntimeMessage(
+      setPlushAdminMessage(
         'La salida del modo peluche requiere el PIN del profesor.',
       );
     };
@@ -334,7 +331,7 @@ export function RealtimeStudentSessionShell({
     setExitPinValue('');
     setExitError('');
     setHoldActive(false);
-    setRuntimeMessage(
+    setPlushAdminMessage(
       action === 'rest'
         ? 'Poner el peluche en reposo requiere el PIN del profesor.'
         : 'La salida del modo peluche requiere el PIN del profesor.',
@@ -386,7 +383,12 @@ export function RealtimeStudentSessionShell({
   }, []);
 
   const confirmProtectedExit = useCallback(async () => {
-    if (exitPinValue.trim() !== PLUSH_EXIT_PIN) {
+    const normalizedPin = exitPinValue.trim();
+
+    if (
+      normalizedPin !== PLUSH_EXIT_PIN &&
+      normalizedPin !== PLUSH_LEGACY_EXIT_PIN
+    ) {
       setExitError('PIN incorrecto. Usa el PIN del profesor para salir.');
       return;
     }
@@ -402,7 +404,9 @@ export function RealtimeStudentSessionShell({
       if (pendingAdminAction === 'rest') {
         setExitModalOpen(false);
         setExitPinValue('');
-        setRuntimeMessage('El peluche quedo en reposo y listo para volver a usarse.');
+        setPlushAdminMessage(
+          'El peluche quedo en reposo y listo para volver a usarse.',
+        );
         return;
       }
 
@@ -416,15 +420,6 @@ export function RealtimeStudentSessionShell({
   if (isPlushSurface) {
     return (
       <main className="relative min-h-screen select-none overscroll-none bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6 [touch-action:manipulation]">
-        <button
-          type="button"
-          onPointerDown={startPlushExitHold}
-          onPointerUp={clearPlushExitHold}
-          onPointerLeave={clearPlushExitHold}
-          onPointerCancel={clearPlushExitHold}
-          className="absolute left-0 top-0 z-20 h-20 w-20 opacity-0"
-          aria-label="Salida administrativa oculta"
-        />
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
           <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
@@ -467,9 +462,8 @@ export function RealtimeStudentSessionShell({
                         Proteccion del modo peluche
                       </p>
                       <p className="mt-2 text-sm leading-6 text-white/75">
-                        Esta vista no muestra salida visible. Para abrir la salida
-                        administrativa, manten presionada la esquina superior
-                        izquierda durante 3 segundos.
+                        Esta vista evita una salida facil para estudiantes, pero
+                        el profesor si puede abrir una salida protegida.
                       </p>
 
                       <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
@@ -489,13 +483,9 @@ export function RealtimeStudentSessionShell({
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => void handleReinforceProtection()}
-                        className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
-                      >
-                        Reforzar proteccion de pantalla
-                      </button>
+                      <p className="mt-4 text-xs leading-5 text-white/55">
+                        {plushAdminMessage}
+                      </p>
                     </div>
 
                     <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-left">
@@ -515,9 +505,22 @@ export function RealtimeStudentSessionShell({
                         Poner peluche en reposo
                       </button>
 
+                      <button
+                        type="button"
+                        onPointerDown={startPlushExitHold}
+                        onPointerUp={clearPlushExitHold}
+                        onPointerLeave={clearPlushExitHold}
+                        onPointerCancel={clearPlushExitHold}
+                        className="mt-3 w-full rounded-full border border-dashed border-white/30 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
+                      >
+                        {holdActive
+                          ? 'Manteniendo 3 segundos...'
+                          : 'Salida del profesor (mantener 3 segundos)'}
+                      </button>
+
                       <p className="mt-4 text-xs leading-5 text-white/55">
                         {holdActive
-                          ? 'Manteniendo esquina administrativa... suelta para cancelar.'
+                          ? 'Suelta para cancelar antes de abrir el PIN.'
                           : 'Reposo y salida quedan protegidos con el PIN del profesor.'}
                       </p>
                     </div>
