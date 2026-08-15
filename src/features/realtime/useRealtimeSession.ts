@@ -18,6 +18,8 @@ type SessionInfo = {
   expiresAt: string | null;
 };
 
+const ACTIVE_WAKE_WINDOW_MS = 25_000;
+
 export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   const [state, setState] = useState<RealtimeStudentState>('idle');
   const [error, setError] = useState('');
@@ -32,6 +34,10 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   );
   const sessionInfoRef = useRef<SessionInfo | null>(null);
   const activeResponseIdRef = useRef<string | null>(null);
+  const ignoredResponseIdRef = useRef<string | null>(null);
+  const suppressNextResponseRef = useRef(false);
+  const wakeUnlockedRef = useRef(false);
+  const wakeWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hiddenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deviceId = useMemo(() => getOrCreateDeviceId(), []);
@@ -42,6 +48,11 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
 
   const endSession = useCallback(
     async (nextState: RealtimeStudentState = 'ended') => {
+      if (wakeWindowTimeoutRef.current) {
+        clearTimeout(wakeWindowTimeoutRef.current);
+        wakeWindowTimeoutRef.current = null;
+      }
+
       if (hiddenTimeoutRef.current) {
         clearTimeout(hiddenTimeoutRef.current);
         hiddenTimeoutRef.current = null;
@@ -56,6 +67,9 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       const currentSession = sessionInfoRef.current;
       bundleRef.current = null;
       activeResponseIdRef.current = null;
+      ignoredResponseIdRef.current = null;
+      suppressNextResponseRef.current = false;
+      wakeUnlockedRef.current = false;
       setConnectionReady(false);
 
       currentBundle?.dataChannel.close();
@@ -80,6 +94,41 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       setState(nextState);
     },
     [deviceId],
+  );
+
+  const clearWakeWindow = useCallback(() => {
+    if (wakeWindowTimeoutRef.current) {
+      clearTimeout(wakeWindowTimeoutRef.current);
+      wakeWindowTimeoutRef.current = null;
+    }
+  }, []);
+
+  const relockWakeSession = useCallback(
+    (message?: string) => {
+      clearWakeWindow();
+      wakeUnlockedRef.current = false;
+      suppressNextResponseRef.current = false;
+      ignoredResponseIdRef.current = null;
+      activeResponseIdRef.current = null;
+      setState('awaiting_wake');
+
+      if (message) {
+        setAssistantReply(message);
+      }
+    },
+    [clearWakeWindow],
+  );
+
+  const armWakeWindow = useCallback(
+    (wakePhrase: string) => {
+      clearWakeWindow();
+      wakeWindowTimeoutRef.current = setTimeout(() => {
+        relockWakeSession(
+          `Sesion en pausa por silencio. Di "${wakePhrase}" para volver a activarla.`,
+        );
+      }, ACTIVE_WAKE_WINDOW_MS);
+    },
+    [clearWakeWindow, relockWakeSession],
   );
 
   const sendRealtimeEvent = useCallback((event: Record<string, unknown>) => {
@@ -118,6 +167,10 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     setPermissionMessage('');
     setLastTranscript('');
     setAssistantReply('');
+    wakeUnlockedRef.current = false;
+    suppressNextResponseRef.current = false;
+    ignoredResponseIdRef.current = null;
+    clearWakeWindow();
     setState('requesting_permission');
     await probePermission();
 
@@ -138,7 +191,10 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
 
       bundle.dataChannel.onopen = () => {
         setConnectionReady(true);
-        setState('listening');
+        setState('awaiting_wake');
+        setAssistantReply(
+          `Esperando activacion: di "${runtime.activeCharacter.wakePhrase}".`,
+        );
       };
 
       bundle.dataChannel.onerror = () => {
@@ -154,11 +210,12 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
         }
 
         if (event.type === 'session.created') {
-          setState('listening');
+          setState('awaiting_wake');
           return;
         }
 
         if (event.type === 'input_audio_buffer.speech_started') {
+          clearWakeWindow();
           if (activeResponseIdRef.current) {
             cancelModelSpeech();
           }
@@ -172,40 +229,130 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
         }
 
         if (event.type === 'conversation.item.input_audio_transcription.completed') {
-          setLastTranscript(event.transcript || '');
+          const transcript = event.transcript || '';
+
+          if (!wakeUnlockedRef.current) {
+            setLastTranscript(transcript);
+            const wakeResult = processRealtimeWakeTranscript({
+              transcript,
+              wakePhrase: runtime.activeCharacter.wakePhrase,
+              characterName: runtime.activeCharacter.name,
+              wakeAliases: runtime.activeCharacter.wakeAliases ?? [],
+            });
+
+            if (wakeResult.kind === 'rejected') {
+              suppressNextResponseRef.current = true;
+              setAssistantReply(wakeResult.prompt);
+              setState('awaiting_wake');
+              return;
+            }
+
+            if (wakeResult.kind === 'activation_only') {
+              wakeUnlockedRef.current = true;
+              suppressNextResponseRef.current = true;
+              setAssistantReply(wakeResult.prompt);
+              setState('listening');
+              armWakeWindow(runtime.activeCharacter.wakePhrase);
+              return;
+            }
+
+            wakeUnlockedRef.current = true;
+            setLastTranscript(wakeResult.question);
+            setAssistantReply(wakeResult.prompt);
+            armWakeWindow(runtime.activeCharacter.wakePhrase);
+            return;
+          }
+
+          const stopResult = processRealtimeStopTranscript({
+            transcript,
+            characterName: runtime.activeCharacter.name,
+            wakeAliases: runtime.activeCharacter.wakeAliases ?? [],
+          });
+
+          if (stopResult.kind === 'stop') {
+            suppressNextResponseRef.current = true;
+            setLastTranscript(transcript);
+            relockWakeSession(stopResult.prompt);
+            return;
+          }
+
+          setLastTranscript(transcript);
+          armWakeWindow(runtime.activeCharacter.wakePhrase);
           return;
         }
 
         if (event.type === 'response.created') {
-          activeResponseIdRef.current = event.response?.id || event.response_id || null;
+          const responseId = event.response?.id || event.response_id || null;
+          activeResponseIdRef.current = responseId;
+
+          if (suppressNextResponseRef.current && responseId) {
+            ignoredResponseIdRef.current = responseId;
+            suppressNextResponseRef.current = false;
+            cancelModelSpeech();
+            setState(wakeUnlockedRef.current ? 'listening' : 'awaiting_wake');
+            return;
+          }
+
           setState('model_processing');
           return;
         }
 
         if (event.type === 'response.output_audio.delta') {
+          if (ignoredResponseIdRef.current) {
+            return;
+          }
+          clearWakeWindow();
           setState('model_speaking');
           return;
         }
 
         if (event.type === 'response.output_audio_transcript.delta') {
+          if (ignoredResponseIdRef.current) {
+            return;
+          }
           setAssistantReply((current) => `${current}${event.delta || ''}`);
           setState('model_speaking');
           return;
         }
 
         if (event.type === 'response.output_audio_transcript.done') {
+          if (ignoredResponseIdRef.current) {
+            return;
+          }
           setAssistantReply(event.transcript || '');
           return;
         }
 
         if (event.type === 'response.done') {
+          if (
+            ignoredResponseIdRef.current &&
+            (event.response_id === ignoredResponseIdRef.current ||
+              event.response?.id === ignoredResponseIdRef.current ||
+              !event.response_id)
+          ) {
+            ignoredResponseIdRef.current = null;
+            activeResponseIdRef.current = null;
+            armWakeWindow(runtime.activeCharacter.wakePhrase);
+            setState(wakeUnlockedRef.current ? 'listening' : 'awaiting_wake');
+            return;
+          }
+
           activeResponseIdRef.current = null;
+          if (wakeUnlockedRef.current) {
+            armWakeWindow(runtime.activeCharacter.wakePhrase);
+          }
           setState('listening');
           return;
         }
 
         if (event.type === 'error') {
-          setError(event.error?.message || 'La sesion realtime devolvio un error.');
+          const message = event.error?.message || 'La sesion realtime devolvio un error.';
+
+          if (message === 'Cancellation failed: no active response found') {
+            return;
+          }
+
+          setError(message);
           setState('error');
         }
       };
@@ -243,11 +390,14 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     }
   }, [
     cancelModelSpeech,
+    clearWakeWindow,
     deviceId,
     endSession,
     probePermission,
+    relockWakeSession,
     runtime,
     setPermission,
+    armWakeWindow,
   ]);
 
   useEffect(() => {
@@ -308,4 +458,140 @@ function getOrCreateDeviceId() {
   const nextId = `device-${crypto.randomUUID()}`;
   window.localStorage.setItem(storageKey, nextId);
   return nextId;
+}
+
+function processRealtimeWakeTranscript(input: {
+  transcript: string;
+  wakePhrase: string;
+  characterName: string;
+  wakeAliases: string[];
+}) {
+  const rawTranscript = input.transcript.trim();
+  const normalizedTranscript = normalizeSpeechText(rawTranscript);
+  const normalizedWakePhrase = normalizeSpeechText(input.wakePhrase);
+  const normalizedName = normalizeSpeechText(input.characterName);
+  const normalizedAliases = input.wakeAliases
+    .map(normalizeSpeechText)
+    .filter(Boolean);
+  const openingCues = buildOpeningCues(
+    normalizedWakePhrase,
+    normalizedName,
+    normalizedAliases,
+  );
+  const openingCue = findMatchingCue(normalizedTranscript, openingCues);
+
+  if (!openingCue) {
+    return {
+      kind: 'rejected' as const,
+      prompt: `Para empezar, di "${input.wakePhrase}".`,
+    };
+  }
+
+  const remainder = stripWakeCue(normalizedTranscript, openingCue);
+
+  if (!remainder) {
+    return {
+      kind: 'activation_only' as const,
+      prompt: `Sesion abierta con "${input.wakePhrase}". Ahora si te escucho.`,
+    };
+  }
+
+  return {
+    kind: 'question' as const,
+    question: remainder,
+    prompt: `Sesion abierta con "${input.wakePhrase}".`,
+  };
+}
+
+function processRealtimeStopTranscript(input: {
+  transcript: string;
+  characterName: string;
+  wakeAliases: string[];
+}) {
+  const normalizedTranscript = normalizeSpeechText(input.transcript);
+  const normalizedName = normalizeSpeechText(input.characterName);
+  const normalizedAliases = input.wakeAliases
+    .map(normalizeSpeechText)
+    .filter(Boolean);
+  const stopPhrases = buildStopCues(normalizedName, normalizedAliases);
+
+  if (!stopPhrases.some((cue) => normalizedTranscript === cue)) {
+    return {
+      kind: 'continue' as const,
+    };
+  }
+
+  return {
+    kind: 'stop' as const,
+    prompt: `Peluche en reposo. Para volver a empezar, di "Hola ${input.characterName}".`,
+  };
+}
+
+function normalizeSpeechText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[!?.,;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function findMatchingCue(transcript: string, cues: string[]) {
+  return cues.find((cue) => transcript === cue || transcript.startsWith(`${cue} `));
+}
+
+function buildOpeningCues(
+  normalizedWakePhrase: string,
+  normalizedName: string,
+  normalizedAliases: string[],
+) {
+  const cues = new Set<string>([normalizedWakePhrase]);
+
+  if (normalizedName) {
+    cues.add(`hola ${normalizedName}`);
+  }
+
+  for (const alias of normalizedAliases) {
+    cues.add(alias);
+    cues.add(`hola ${alias}`);
+  }
+
+  return Array.from(cues).filter(Boolean);
+}
+
+function buildStopCues(normalizedName: string, normalizedAliases: string[]) {
+  const names = [normalizedName, ...normalizedAliases].filter(Boolean);
+  const genericCues = [
+    'para',
+    'parate',
+    'detente',
+    'alto',
+    'descansa',
+    'duermete',
+    'a dormir',
+    'vete a dormir',
+  ];
+  const cues = new Set<string>(genericCues);
+
+  for (const name of names) {
+    cues.add(`adios ${name}`);
+    cues.add(`hasta luego ${name}`);
+    cues.add(`${name} para`);
+    cues.add(`${name} descansa`);
+    cues.add(`${name} duermete`);
+    cues.add(`${name} a dormir`);
+  }
+
+  return Array.from(cues);
+}
+
+function stripWakeCue(transcript: string, cue: string) {
+  if (transcript === cue) {
+    return '';
+  }
+
+  return transcript.startsWith(`${cue} `)
+    ? transcript.slice(cue.length).trim()
+    : transcript;
 }

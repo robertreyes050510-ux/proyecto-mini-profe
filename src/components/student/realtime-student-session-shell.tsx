@@ -23,6 +23,11 @@ const stateCards: Array<{
     description: 'Preparando microfono, WebRTC y sesion segura.',
   },
   {
+    label: 'Esperando activacion',
+    phase: 'awaiting_wake',
+    description: 'La sesion esta abierta, pero espera la frase Hola + nombre.',
+  },
+  {
     label: 'Escuchando',
     phase: 'listening',
     description: 'El peluche esta atento y esperando tu voz.',
@@ -59,7 +64,6 @@ type NavigatorWithWakeLock = Navigator & {
 };
 
 const PLUSH_EXIT_PIN = process.env.NEXT_PUBLIC_PLUSH_EXIT_PIN || '0505';
-const PLUSH_LEGACY_EXIT_PIN = '2468';
 const PLUSH_EXIT_HOLD_MS = 3000;
 
 type PlushAdminAction = 'exit' | 'rest';
@@ -385,10 +389,7 @@ export function RealtimeStudentSessionShell({
   const confirmProtectedExit = useCallback(async () => {
     const normalizedPin = exitPinValue.trim();
 
-    if (
-      normalizedPin !== PLUSH_EXIT_PIN &&
-      normalizedPin !== PLUSH_LEGACY_EXIT_PIN
-    ) {
+    if (normalizedPin !== PLUSH_EXIT_PIN) {
       setExitError('PIN incorrecto. Usa el PIN del profesor para salir.');
       return;
     }
@@ -420,6 +421,16 @@ export function RealtimeStudentSessionShell({
   if (isPlushSurface) {
     return (
       <main className="relative min-h-screen select-none overscroll-none bg-gradient-to-b from-[#fffdf8] via-[#eef9ff] to-[#dff4ff] px-4 py-6 [touch-action:manipulation]">
+        <button
+          type="button"
+          onPointerDown={startPlushExitHold}
+          onPointerUp={clearPlushExitHold}
+          onPointerLeave={clearPlushExitHold}
+          onPointerCancel={clearPlushExitHold}
+          className="absolute left-4 top-4 z-20 rounded-full border border-ink/10 bg-white/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-ink/70 shadow-sm backdrop-blur transition hover:border-coral hover:text-coral"
+        >
+          {holdActive ? 'Manteniendo...' : 'Admin 3s'}
+        </button>
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
           <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
@@ -505,23 +516,10 @@ export function RealtimeStudentSessionShell({
                         Poner peluche en reposo
                       </button>
 
-                      <button
-                        type="button"
-                        onPointerDown={startPlushExitHold}
-                        onPointerUp={clearPlushExitHold}
-                        onPointerLeave={clearPlushExitHold}
-                        onPointerCancel={clearPlushExitHold}
-                        className="mt-3 w-full rounded-full border border-dashed border-white/30 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
-                      >
-                        {holdActive
-                          ? 'Manteniendo 3 segundos...'
-                          : 'Salida del profesor (mantener 3 segundos)'}
-                      </button>
-
                       <p className="mt-4 text-xs leading-5 text-white/55">
                         {holdActive
                           ? 'Suelta para cancelar antes de abrir el PIN.'
-                          : 'Reposo y salida quedan protegidos con el PIN del profesor.'}
+                          : 'Reposo y salida quedan protegidos con el PIN del profesor. El acceso admin visible esta arriba a la izquierda.'}
                       </p>
                     </div>
                   </div>
@@ -830,6 +828,8 @@ function getStateLabel(state: RealtimeStudentState) {
       return 'Pidiendo permiso';
     case 'connecting':
       return 'Conectando';
+    case 'awaiting_wake':
+      return 'Esperando activacion';
     case 'listening':
       return 'Escuchando';
     case 'user_speaking':
@@ -859,6 +859,8 @@ function getStateMessage(
       return 'Necesitamos el microfono para empezar.';
     case 'connecting':
       return 'Abriendo WebRTC y preparando la voz del personaje.';
+    case 'awaiting_wake':
+      return `Di "Hola ${characterName || 'Peluche'}" para abrir la conversacion.`;
     case 'listening':
       return `${characterName || 'El personaje'} ya esta listo para escucharte.`;
     case 'user_speaking':

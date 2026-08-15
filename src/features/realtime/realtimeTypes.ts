@@ -14,6 +14,7 @@ export type RealtimeStudentState =
   | 'idle'
   | 'requesting_permission'
   | 'connecting'
+  | 'awaiting_wake'
   | 'listening'
   | 'user_speaking'
   | 'model_processing'
