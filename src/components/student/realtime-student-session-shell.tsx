@@ -61,6 +61,8 @@ type NavigatorWithWakeLock = Navigator & {
 const PLUSH_EXIT_PIN = process.env.NEXT_PUBLIC_PLUSH_EXIT_PIN || '2468';
 const PLUSH_EXIT_HOLD_MS = 3000;
 
+type PlushAdminAction = 'exit' | 'rest';
+
 export function RealtimeStudentSessionShell({
   surface = 'student',
 }: RealtimeStudentSessionShellProps) {
@@ -72,6 +74,8 @@ export function RealtimeStudentSessionShell({
     'Cargando configuracion activa del peluche...',
   );
   const [exitModalOpen, setExitModalOpen] = useState(false);
+  const [pendingAdminAction, setPendingAdminAction] =
+    useState<PlushAdminAction>('exit');
   const [exitPinValue, setExitPinValue] = useState('');
   const [exitError, setExitError] = useState('');
   const [holdActive, setHoldActive] = useState(false);
@@ -185,6 +189,13 @@ export function RealtimeStudentSessionShell({
     await requestWakeLock();
   }, [requestFullscreen, requestWakeLock, surface]);
 
+  const handleReinforceProtection = useCallback(async () => {
+    await preparePlushSurface();
+    setRuntimeMessage(
+      'Proteccion reintentada. Si el navegador lo permite, la pantalla queda despierta y en pantalla completa.',
+    );
+  }, [preparePlushSurface]);
+
   const handleStartSession = useCallback(async () => {
     await preparePlushSurface();
     await realtimeSession.startSession();
@@ -245,6 +256,7 @@ export function RealtimeStudentSessionShell({
       }
 
       window.history.pushState({ plushGuard: true }, '', window.location.href);
+      setPendingAdminAction('exit');
       setExitModalOpen(true);
       setExitError('');
       setRuntimeMessage(
@@ -312,17 +324,20 @@ export function RealtimeStudentSessionShell({
         : screenProtectionStatus === 'blocked'
           ? 'No se pudo fijar la pantalla. Puedes reactivarla desde controles del adulto.'
           : 'La proteccion se prepara al abrir la sesion de voz.';
-  const openProtectedExitModal = useCallback(() => {
+  const openProtectedExitModal = useCallback((action: PlushAdminAction = 'exit') => {
     if (!isPlushSurface) {
       return;
     }
 
+    setPendingAdminAction(action);
     setExitModalOpen(true);
     setExitPinValue('');
     setExitError('');
     setHoldActive(false);
     setRuntimeMessage(
-      'La salida del modo peluche requiere el PIN del profesor.',
+      action === 'rest'
+        ? 'Poner el peluche en reposo requiere el PIN del profesor.'
+        : 'La salida del modo peluche requiere el PIN del profesor.',
     );
   }, [isPlushSurface]);
 
@@ -384,12 +399,19 @@ export function RealtimeStudentSessionShell({
         await realtimeSession.endSession('ended');
       }
 
+      if (pendingAdminAction === 'rest') {
+        setExitModalOpen(false);
+        setExitPinValue('');
+        setRuntimeMessage('El peluche quedo en reposo y listo para volver a usarse.');
+        return;
+      }
+
       bypassPopstateRef.current = true;
       window.location.href = resolveProtectedExitHref();
     } finally {
       setExitBusy(false);
     }
-  }, [exitPinValue, realtimeSession, resolveProtectedExitHref]);
+  }, [exitPinValue, pendingAdminAction, realtimeSession, resolveProtectedExitHref]);
 
   if (isPlushSurface) {
     return (
@@ -403,96 +425,103 @@ export function RealtimeStudentSessionShell({
           className="absolute left-0 top-0 z-20 h-20 w-20 opacity-0"
           aria-label="Salida administrativa oculta"
         />
-        <div className="mx-auto flex max-w-md flex-col gap-5">
+        <div className="mx-auto flex max-w-5xl flex-col gap-5">
           <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card">
-            <div className="space-y-6 text-center">
-              <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-white/75">
-                {heroBadge}
-              </span>
+            <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
+              <div className="space-y-6 text-center lg:text-left">
+                <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-white/75">
+                  {heroBadge}
+                </span>
 
-              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12">
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-coral text-3xl font-extrabold text-white">
-                  {runtime?.activeCharacter.name?.slice(0, 8) || 'Mini'}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
-                  Estado actual
-                </p>
-                <h1 className="text-4xl font-extrabold">{currentStateLabel}</h1>
-                <p className="text-base leading-7 text-white/80">
-                  {currentStateMessage}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => void handleStartSession()}
-                  disabled={!canStartSession}
-                  className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  {connectLabel}
-                </button>
-
-                <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-left">
-                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
-                    Proteccion del modo peluche
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-white/75">
-                    Esta vista no muestra salida visible. Para abrir la salida
-                    administrativa, manten presionada la esquina superior
-                    izquierda durante 3 segundos.
-                  </p>
-
-                  <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/65">
-                      Pantalla del peluche
-                    </p>
-                    <p className="mt-2 text-base font-semibold text-white">
-                      {plushProtectionLabel}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-white/75">
-                      {plushProtectionMessage}
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-white/55">
-                      {isFullscreen
-                        ? 'La vista esta en pantalla completa.'
-                        : 'Si el navegador lo permite, la pantalla completa se reactiva al iniciar la sesion.'}
-                    </p>
+                <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white/12 lg:mx-0">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-coral text-3xl font-extrabold text-white">
+                    {runtime?.activeCharacter.name?.slice(0, 8) || 'Mini'}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void preparePlushSurface()}
-                    className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
-                  >
-                    Reforzar proteccion de pantalla
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void realtimeSession.endSession('ended')}
-                    disabled={!canEndSession}
-                    className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Poner peluche en reposo
-                  </button>
-
-                  <p className="mt-4 text-xs leading-5 text-white/55">
-                    El boton atras y la salida manual quedan protegidos con el
-                    PIN del profesor para evitar cierres accidentales.
-                  </p>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-center">
-                  <p className="text-sm leading-6 text-white/70">{helperText}</p>
-                  <p className="mt-2 text-xs leading-5 text-white/55">
-                    {holdActive
-                      ? 'Manteniendo esquina administrativa... suelta para cancelar.'
-                      : 'No hay boton de salida visible para el estudiante.'}
+                <div className="space-y-3">
+                  <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
+                    Estado actual
                   </p>
+                  <h1 className="text-4xl font-extrabold">{currentStateLabel}</h1>
+                  <p className="text-base leading-7 text-white/80">
+                    {currentStateMessage}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleStartSession()}
+                    disabled={!canStartSession}
+                    className="w-full rounded-full border-2 border-white/25 bg-coral px-6 py-4 text-lg font-extrabold text-white transition enabled:hover:scale-[1.01] enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {connectLabel}
+                  </button>
+
+                  <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
+                        Proteccion del modo peluche
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-white/75">
+                        Esta vista no muestra salida visible. Para abrir la salida
+                        administrativa, manten presionada la esquina superior
+                        izquierda durante 3 segundos.
+                      </p>
+
+                      <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/65">
+                          Pantalla del peluche
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-white">
+                          {plushProtectionLabel}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-white/75">
+                          {plushProtectionMessage}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-white/55">
+                          {isFullscreen
+                            ? 'La vista esta en pantalla completa.'
+                            : 'Si el navegador lo permite, la pantalla completa se reactiva al iniciar la sesion.'}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleReinforceProtection()}
+                        className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition hover:border-coral hover:text-coral"
+                      >
+                        Reforzar proteccion de pantalla
+                      </button>
+                    </div>
+
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">
+                        Acciones del profesor
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-white/75">
+                        {helperText}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => openProtectedExitModal('rest')}
+                        disabled={!canEndSession}
+                        className="mt-4 w-full rounded-full border border-white/20 px-6 py-4 text-base font-bold text-white/90 transition enabled:hover:border-coral enabled:hover:text-coral disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Poner peluche en reposo
+                      </button>
+
+                      <p className="mt-4 text-xs leading-5 text-white/55">
+                        {holdActive
+                          ? 'Manteniendo esquina administrativa... suelta para cancelar.'
+                          : 'Reposo y salida quedan protegidos con el PIN del profesor.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -585,7 +614,9 @@ export function RealtimeStudentSessionShell({
                 Salir del modo peluche
               </h2>
               <p className="mt-3 text-sm leading-6 text-ink/70">
-                Introduce el PIN del profesor para volver al panel anterior.
+                {pendingAdminAction === 'rest'
+                  ? 'Introduce el PIN del profesor para detener la conversacion y dejar el peluche en reposo.'
+                  : 'Introduce el PIN del profesor para volver al panel anterior.'}
               </p>
 
               <label className="mt-5 block">
@@ -630,7 +661,11 @@ export function RealtimeStudentSessionShell({
                   disabled={exitBusy}
                   className="rounded-full bg-coral px-4 py-3 text-sm font-bold text-white transition hover:bg-[#ef7444] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {exitBusy ? 'Verificando...' : 'Salir del modo peluche'}
+                  {exitBusy
+                    ? 'Verificando...'
+                    : pendingAdminAction === 'rest'
+                      ? 'Confirmar reposo'
+                      : 'Salir del modo peluche'}
                 </button>
               </div>
             </div>

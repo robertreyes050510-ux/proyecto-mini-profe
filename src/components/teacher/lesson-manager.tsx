@@ -451,7 +451,7 @@ export function LessonManager({ user }: { user: User }) {
 
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-ink/70">
-                  Apoyo breve cuando el alumno hable ingles
+                  Frase de apoyo si responden en ingles
                 </span>
                 <input
                   type="text"
@@ -614,7 +614,9 @@ export function LessonManager({ user }: { user: User }) {
                     </div>
 
                     <div>
-                      <p className="text-sm font-bold text-ink/55">Fallback de ingles</p>
+                      <p className="text-sm font-bold text-ink/55">
+                        Frase de apoyo si responden en ingles
+                      </p>
                       <p className="mt-1 text-sm leading-6 text-ink/75">
                         {lesson.englishFallbackText}
                       </p>
