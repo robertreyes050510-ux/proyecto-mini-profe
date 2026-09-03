@@ -40,7 +40,7 @@ describe('buildSessionInstructions', () => {
     expect(result.text).toContain('Tema actual: Animales.');
     expect(result.text).toContain('Hablas como un companero de conversacion escolar');
     expect(result.text).toContain('Evita estos temas si aparecen: violencia.');
-    expect(result.text).toContain('Puedes usar apoyo breve en ingles');
+    expect(result.text).toContain('Usa apoyo breve en ingles de forma proactiva');
     expect(result.normalized.lesson.allowedVocabulary).toEqual(['perro', 'gato']);
   });
 

@@ -8,9 +8,9 @@ import {
 describe('realtimeConfig', () => {
   it('provides conservative classroom turn detection defaults', () => {
     expect(defaultRealtimeTurnDetection.type).toBe('server_vad');
-    expect(defaultRealtimeTurnDetection.silenceDurationMs).toBeGreaterThanOrEqual(900);
+    expect(defaultRealtimeTurnDetection.silenceDurationMs).toBeGreaterThanOrEqual(1_200);
     expect(defaultRealtimeTurnDetection.prefixPaddingMs).toBeGreaterThan(0);
-    expect(defaultRealtimeTurnDetection.interruptResponse).toBe(true);
+    expect(defaultRealtimeTurnDetection.interruptResponse).toBe(false);
   });
 
   it('returns safe env defaults when no env vars are present', () => {

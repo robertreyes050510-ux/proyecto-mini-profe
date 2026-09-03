@@ -2,11 +2,13 @@ import type { RealtimeTurnDetectionConfig } from '@/features/realtime/realtimeTy
 
 export const defaultRealtimeTurnDetection: RealtimeTurnDetectionConfig = {
   type: 'server_vad',
-  threshold: 0.55,
-  silenceDurationMs: 950,
+  // A plush is used in a noisy room, so require a clearer voice signal before a turn begins.
+  threshold: 0.65,
+  silenceDurationMs: 1_200,
   prefixPaddingMs: 300,
   createResponse: true,
-  interruptResponse: true,
+  // The client confirms real speech from the transcript before interrupting Paco.
+  interruptResponse: false,
 };
 
 export const realtimeVoices = [

@@ -66,6 +66,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       const currentBundle = bundleRef.current;
       const currentSession = sessionInfoRef.current;
       bundleRef.current = null;
+      sessionInfoRef.current = null;
       activeResponseIdRef.current = null;
       ignoredResponseIdRef.current = null;
       suppressNextResponseRef.current = false;
@@ -78,16 +79,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       currentBundle?.localStream.getTracks().forEach((track) => track.stop());
 
       if (currentSession) {
-        void fetch('/api/realtime/session', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            callId: currentSession.callId,
-            deviceId,
-          }),
-        }).catch(() => undefined);
+        void releaseRealtimeSession(currentSession, deviceId, true);
       }
 
       setSessionInfo(null);
@@ -185,6 +177,9 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       });
 
       bundleRef.current = bundle;
+      // Keep this ref current immediately so a quick browser Back action can
+      // still release the server session before React commits state updates.
+      sessionInfoRef.current = session;
       setSessionInfo(session);
       setPermission('granted');
       setConnectionReady(bundle.dataChannel.readyState === 'open');
@@ -215,21 +210,23 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
         }
 
         if (event.type === 'input_audio_buffer.speech_started') {
-          clearWakeWindow();
-          if (activeResponseIdRef.current) {
-            cancelModelSpeech();
-          }
-          setState('user_speaking');
+          // VAD also fires for bumps and room noise. Wait for a real transcript
+          // before interrupting the character or treating this as activity.
           return;
         }
 
         if (event.type === 'input_audio_buffer.speech_stopped') {
-          setState('model_processing');
           return;
         }
 
         if (event.type === 'conversation.item.input_audio_transcription.completed') {
           const transcript = event.transcript || '';
+
+          if (!hasMeaningfulUserSpeech(transcript)) {
+            return;
+          }
+
+          clearWakeWindow();
 
           if (!wakeUnlockedRef.current) {
             setLastTranscript(transcript);
@@ -274,6 +271,10 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
             setLastTranscript(transcript);
             relockWakeSession(stopResult.prompt);
             return;
+          }
+
+          if (activeResponseIdRef.current) {
+            cancelModelSpeech();
           }
 
           setLastTranscript(transcript);
@@ -429,6 +430,27 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     };
   }, [endSession]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const releaseSessionOnPageExit = () => {
+      const currentSession = sessionInfoRef.current;
+
+      if (!currentSession) {
+        return;
+      }
+
+      // iPhone Safari can stop ordinary requests during navigation. keepalive
+      // lets this small release request finish after the current page closes.
+      void releaseRealtimeSession(currentSession, deviceId, true);
+    };
+
+    window.addEventListener('pagehide', releaseSessionOnPageExit);
+    return () => window.removeEventListener('pagehide', releaseSessionOnPageExit);
+  }, [deviceId]);
+
   return {
     state,
     error,
@@ -458,6 +480,20 @@ function getOrCreateDeviceId() {
   const nextId = `device-${crypto.randomUUID()}`;
   window.localStorage.setItem(storageKey, nextId);
   return nextId;
+}
+
+function releaseRealtimeSession(session: SessionInfo, deviceId: string, keepalive = false) {
+  return fetch('/api/realtime/session', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      callId: session.callId,
+      deviceId,
+    }),
+    keepalive,
+  }).catch(() => undefined);
 }
 
 function processRealtimeWakeTranscript(input: {
@@ -525,6 +561,21 @@ function processRealtimeStopTranscript(input: {
     kind: 'stop' as const,
     prompt: `Peluche en reposo. Para volver a empezar, di "Hola ${input.characterName}".`,
   };
+}
+
+function hasMeaningfulUserSpeech(transcript: string) {
+  const normalizedTranscript = normalizeSpeechText(transcript);
+
+  if (!normalizedTranscript) {
+    return false;
+  }
+
+  // Transcription can label room sounds without any child speech.
+  if (['inaudible', 'ruido', 'noise', 'silencio'].includes(normalizedTranscript)) {
+    return false;
+  }
+
+  return normalizedTranscript.split(' ').some((word) => word.length >= 2);
 }
 
 function normalizeSpeechText(value: string) {

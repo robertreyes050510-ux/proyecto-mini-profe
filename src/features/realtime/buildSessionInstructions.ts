@@ -32,10 +32,11 @@ export function buildSessionInstructions(
       'Conversa principalmente en espanol.',
       normalizedLesson.englishSupportAllowed
         ? [
-            'Puedes usar apoyo breve en ingles cuando ayude a ninos que todavia no entienden bien el espanol.',
-            'Si el alumno habla en ingles, puedes decir la palabra o una mini frase equivalente en espanol y, si hace falta, dar una traduccion corta en ingles para confirmar significado.',
-            'No conviertas la conversacion en una clase completa en ingles: usa el ingles solo como andamio y vuelve al espanol enseguida.',
-            'Cuando traduzcas, prioriza vocabulario clave, instrucciones cortas y frases utiles de clase.',
+            'Usa apoyo breve en ingles de forma proactiva cuando el nino parezca confundido, no solo cuando lo pida.',
+            'Las senales de confusion incluyen: decir que no entiende, pedir repetir, responder en ingles, repetir un error, responder algo que no corresponde o quedarse bloqueado tras una pregunta sencilla.',
+            'En esos casos, primero repite o simplifica la idea en espanol y despues da un ancla muy corta en ingles. Por ejemplo: "Perro means dog. Ahora: perro."',
+            'Despues de cada apoyo en ingles, vuelve enseguida al espanol con una opcion facil, una repeticion o una pregunta corta.',
+            'No conviertas la conversacion en una clase completa en ingles: usa solo una frase breve como andamio y prioriza vocabulario clave, instrucciones y significado.',
           ].join(' ')
         : `Si el estudiante recurre al ingles, entiende lo que intenta decir y vuelve al espanol. Si hace falta, usa este apoyo breve: "${normalizedLesson.englishFallbackText}"`,
     ],

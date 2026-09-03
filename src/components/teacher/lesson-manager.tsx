@@ -386,11 +386,11 @@ export function LessonManager({ user }: { user: User }) {
             />
             <span className="block">
               <span className="block text-sm font-bold text-ink/70">
-                Espanol con apoyo breve en ingles
+                Apoyo inteligente en ingles cuando haga falta
               </span>
               <span className="mt-1 block text-sm leading-6 text-ink/55">
-                Util cuando los ninos aun no entienden suficiente espanol. Paco
-                puede aclarar algo en ingles y volver al espanol enseguida.
+                Si un nino se confunde, Paco puede aclarar una palabra o instruccion
+                en ingles y volver enseguida al espanol.
               </span>
             </span>
           </label>
