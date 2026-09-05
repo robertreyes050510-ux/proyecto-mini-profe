@@ -24,6 +24,8 @@ export const lessonConfigDefaults: Omit<LessonConfig, 'id'> = {
   gradeLevel: 'Pre-K',
   approximateAge: '5-6',
   spanishLevel: 'beginner',
+  learningLanguage: 'espanol',
+  transcriptionLanguage: 'es',
   topic: '',
   objective: '',
   allowedVocabulary: [],
@@ -56,6 +58,12 @@ export function normalizeLessonConfig(
       source.spanishLevel,
       spanishLevels,
       lessonConfigDefaults.spanishLevel,
+    ),
+    learningLanguage:
+      normalizeString(source.learningLanguage) || lessonConfigDefaults.learningLanguage,
+    transcriptionLanguage: normalizeLanguageCode(
+      source.transcriptionLanguage,
+      lessonConfigDefaults.transcriptionLanguage,
     ),
     topic: normalizeString(source.topic),
     objective: normalizeString(source.objective),
@@ -147,6 +155,11 @@ function normalizeStringList(value: unknown) {
 
 function normalizeBoolean(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeLanguageCode(value: unknown, fallback: string) {
+  const normalized = normalizeString(value).toLowerCase();
+  return /^[a-z]{2,3}$/.test(normalized) ? normalized : fallback;
 }
 
 function normalizeInteger(

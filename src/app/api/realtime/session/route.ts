@@ -88,7 +88,7 @@ export async function POST(request: Request) {
           },
           transcription: {
             model: getRealtimeTranscriptionModel(),
-            language: 'es',
+            language: resolveTranscriptionLanguage(runtime.activeLesson.transcriptionLanguage),
             prompt: buildTranscriptionPrompt(runtime),
           },
           turn_detection: toRealtimeTurnDetectionConfig(defaultRealtimeTurnDetection),
@@ -265,10 +265,16 @@ function buildTranscriptionPrompt(runtime: StudentRuntimeConfig) {
   return [
     `Nombre del personaje: ${runtime.activeCharacter.name}.`,
     `Frase de activacion historica: ${runtime.activeCharacter.wakePhrase}.`,
+    `Idioma de la clase: ${runtime.activeLesson.learningLanguage || 'espanol'}.`,
     `Tema de clase: ${runtime.activeLesson.topic}.`,
     `Vocabulario prioritario: ${runtime.activeLesson.allowedVocabulary.join(', ') || 'sin lista'}.`,
-    'Transcribe en espanol cuando sea posible y conserva nombres propios cercanos al personaje.',
+    `Transcribe en ${runtime.activeLesson.learningLanguage || 'espanol'} cuando sea posible y conserva nombres propios cercanos al personaje.`,
   ].join(' ');
+}
+
+function resolveTranscriptionLanguage(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase() || 'es';
+  return /^[a-z]{2,3}$/.test(normalized) ? normalized : 'es';
 }
 
 function releaseExpiredSession(deviceId: string) {

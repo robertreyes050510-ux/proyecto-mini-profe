@@ -252,8 +252,8 @@ export function ActiveAssignmentManager({ user }: { user: User }) {
               </p>
               <p className="mt-2 text-sm font-bold text-coral">
                 {activeLesson.englishSupportAllowed
-                  ? 'Espanol con apoyo breve en ingles.'
-                  : 'Espanol como idioma principal de la conversacion.'}
+                  ? `${activeLesson.learningLanguage ?? 'Espanol'} con apoyo breve en ingles.`
+                  : `${activeLesson.learningLanguage ?? 'Espanol'} como idioma principal de la conversacion.`}
               </p>
             </div>
           ) : null}

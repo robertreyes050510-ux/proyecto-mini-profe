@@ -10,6 +10,7 @@ describe('realtimeConfig', () => {
     expect(defaultRealtimeTurnDetection.type).toBe('server_vad');
     expect(defaultRealtimeTurnDetection.silenceDurationMs).toBeGreaterThanOrEqual(1_200);
     expect(defaultRealtimeTurnDetection.prefixPaddingMs).toBeGreaterThan(0);
+    expect(defaultRealtimeTurnDetection.createResponse).toBe(false);
     expect(defaultRealtimeTurnDetection.interruptResponse).toBe(false);
   });
 

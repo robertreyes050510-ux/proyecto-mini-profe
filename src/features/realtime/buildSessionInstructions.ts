@@ -22,6 +22,7 @@ export function buildSessionInstructions(
 ): BuiltSessionInstructions {
   const normalizedCharacter = normalizeRealtimeCharacterConfig(input.character);
   const normalizedLesson = normalizeRealtimeLessonConfig(input.lesson);
+  const learningLanguage = normalizedLesson.learningLanguage;
 
   const sections = {
     identity: [
@@ -29,30 +30,30 @@ export function buildSessionInstructions(
       `Tu voz base es ${normalizedCharacter.voiceProfile} y tu energia es ${formatEnergy(normalizedCharacter.energyLevel)}.`,
     ],
     language: [
-      'Conversa principalmente en espanol.',
+      `Conversa principalmente en ${learningLanguage}.`,
       normalizedLesson.englishSupportAllowed
         ? [
             'Usa apoyo breve en ingles de forma proactiva cuando el nino parezca confundido, no solo cuando lo pida.',
             'Las senales de confusion incluyen: decir que no entiende, pedir repetir, responder en ingles, repetir un error, responder algo que no corresponde o quedarse bloqueado tras una pregunta sencilla.',
-            'En esos casos, primero repite o simplifica la idea en espanol y despues da un ancla muy corta en ingles. Por ejemplo: "Perro means dog. Ahora: perro."',
-            'Despues de cada apoyo en ingles, vuelve enseguida al espanol con una opcion facil, una repeticion o una pregunta corta.',
+            `En esos casos, primero repite o simplifica la idea en ${learningLanguage} y despues da un ancla muy corta en ingles para confirmar significado.`,
+            `Despues de cada apoyo en ingles, vuelve enseguida a ${learningLanguage} con una opcion facil, una repeticion o una pregunta corta.`,
             'No conviertas la conversacion en una clase completa en ingles: usa solo una frase breve como andamio y prioriza vocabulario clave, instrucciones y significado.',
           ].join(' ')
-        : `Si el estudiante recurre al ingles, entiende lo que intenta decir y vuelve al espanol. Si hace falta, usa este apoyo breve: "${normalizedLesson.englishFallbackText}"`,
+        : `Si el estudiante recurre al ingles, entiende lo que intenta decir y vuelve a ${learningLanguage}. Si hace falta, usa este apoyo breve: "${normalizedLesson.englishFallbackText}"`,
     ],
     personality: [
       `Tu personalidad es: ${normalizedCharacter.personality}.`,
       'Hablas como un companero de conversacion escolar, no como un examinador ni como un asistente corporativo.',
     ],
     schoolContext: [
-      `Estas en una clase de espanol para el grado ${normalizedLesson.gradeLevel}.`,
+      `Estas en una clase de ${learningLanguage} para el grado ${normalizedLesson.gradeLevel}.`,
       `Edad aproximada del grupo: ${normalizedLesson.approximateAge}.`,
       normalizedLesson.culturalContext
         ? `Contexto cultural a favorecer: ${normalizedLesson.culturalContext}.`
         : 'No inventes contexto cultural innecesario si el profesor no lo definio.',
     ],
     studentLevel: [
-      `Nivel de espanol esperado: ${formatSpanishLevel(normalizedLesson.spanishLevel)}.`,
+      `Nivel esperado en ${learningLanguage}: ${formatSpanishLevel(normalizedLesson.spanishLevel)}.`,
       `Adapta tu vocabulario, velocidad y complejidad a ese nivel.`,
     ],
     curriculum: [
@@ -84,7 +85,7 @@ export function buildSessionInstructions(
         ? `Evita estos temas si aparecen: ${normalizedLesson.avoidTopics.join(', ')}.`
         : 'Si el alumno se aleja del tema, reconduce con suavidad.',
       normalizedLesson.teacherSpecialInstructions
-        ? `Instrucciones especiales del profesor: ${normalizedLesson.teacherSpecialInstructions}.`
+        ? `Guia programable del profesor para esta sesion: ${normalizedLesson.teacherSpecialInstructions}. Sigue esta guia siempre que no contradiga la seguridad infantil ni la leccion activa.`
         : 'No inventes restricciones especiales si el profesor no las definio.',
     ],
     voiceInteraction: [
@@ -145,8 +146,12 @@ function normalizeRealtimeLessonConfig(
     gradeLevel: normalized.gradeLevel,
     approximateAge: normalized.approximateAge,
     spanishLevel: normalized.spanishLevel,
-    topic: normalized.topic || 'Conversacion guiada en espanol',
-    objective: normalized.objective || 'Ayudar al estudiante a usar el espanol con confianza.',
+    learningLanguage: normalized.learningLanguage,
+    transcriptionLanguage: normalized.transcriptionLanguage,
+    topic: normalized.topic || `Conversacion guiada en ${normalized.learningLanguage}`,
+    objective:
+      normalized.objective ||
+      `Ayudar al estudiante a usar ${normalized.learningLanguage} con confianza.`,
     allowedVocabulary: normalized.allowedVocabulary,
     priorityGrammarStructures: normalized.priorityGrammarStructures,
     culturalContext: normalized.culturalContext,

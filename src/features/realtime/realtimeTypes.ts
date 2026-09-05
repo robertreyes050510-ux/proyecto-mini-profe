@@ -44,6 +44,8 @@ export type RealtimeLessonSessionConfig = {
   gradeLevel: GradeLevel;
   approximateAge: string;
   spanishLevel: SpanishLevel;
+  learningLanguage: string;
+  transcriptionLanguage: string;
   topic: string;
   objective: string;
   allowedVocabulary: string[];

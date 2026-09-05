@@ -6,7 +6,8 @@ export const defaultRealtimeTurnDetection: RealtimeTurnDetectionConfig = {
   threshold: 0.65,
   silenceDurationMs: 1_200,
   prefixPaddingMs: 300,
-  createResponse: true,
+  // The client creates a response only after it confirms a useful transcript.
+  createResponse: false,
   // The client confirms real speech from the transcript before interrupting Paco.
   interruptResponse: false,
 };

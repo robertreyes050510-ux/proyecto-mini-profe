@@ -18,6 +18,8 @@ describe('buildSessionInstructions', () => {
         gradeLevel: '3',
         approximateAge: '8-9',
         spanishLevel: 'developing',
+        learningLanguage: 'frances',
+        transcriptionLanguage: 'fr',
         topic: 'Animales',
         objective: 'Hablar de mascotas y preferencias',
         allowedVocabulary: ['perro', 'gato'],
@@ -38,6 +40,7 @@ describe('buildSessionInstructions', () => {
 
     expect(result.text).toContain('Eres Sasa.');
     expect(result.text).toContain('Tema actual: Animales.');
+    expect(result.text).toContain('Conversa principalmente en frances.');
     expect(result.text).toContain('Hablas como un companero de conversacion escolar');
     expect(result.text).toContain('Evita estos temas si aparecen: violencia.');
     expect(result.text).toContain('Usa apoyo breve en ingles de forma proactiva');
@@ -62,7 +65,7 @@ describe('buildSessionInstructions', () => {
     expect(result.normalized.character.voiceSpeed).toBe(1.4);
     expect(result.normalized.lesson.topic).toBe('Conversacion guiada en espanol');
     expect(result.normalized.lesson.objective).toBe(
-      'Ayudar al estudiante a usar el espanol con confianza.',
+      'Ayudar al estudiante a usar espanol con confianza.',
     );
     expect(result.normalized.lesson.allowedVocabulary).toEqual(['hola']);
   });

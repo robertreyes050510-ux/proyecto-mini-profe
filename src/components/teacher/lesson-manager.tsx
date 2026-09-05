@@ -29,11 +29,22 @@ const freedomLevels: Array<{ value: LessonFreedomLevel; label: string }> = [
   { value: 'medium', label: 'Media' },
   { value: 'high', label: 'Alta' },
 ];
+const teachingLanguages = [
+  { code: 'es', label: 'Espanol', name: 'espanol' },
+  { code: 'fr', label: 'Frances', name: 'frances' },
+  { code: 'zh', label: 'Chino mandarin', name: 'chino mandarin' },
+  { code: 'en', label: 'Ingles', name: 'ingles' },
+  { code: 'pt', label: 'Portugues', name: 'portugues' },
+  { code: 'ja', label: 'Japones', name: 'japones' },
+  { code: 'ko', label: 'Coreano', name: 'coreano' },
+];
 
 const initialDraft: LessonDraft = {
   gradeLevel: 'Pre-K',
   approximateAge: '5-6',
   spanishLevel: 'beginner',
+  learningLanguage: 'espanol',
+  transcriptionLanguage: 'es',
   topic: '',
   objective: '',
   allowedVocabulary: [],
@@ -92,6 +103,13 @@ export function LessonManager({ user }: { user: User }) {
     ? lessons
     : lessons.slice(0, libraryPreviewCount);
   const hiddenLessonsCount = Math.max(lessons.length - libraryPreviewCount, 0);
+  const selectedTeachingLanguage = teachingLanguages.some(
+    (language) =>
+      language.code === draft.transcriptionLanguage &&
+      language.name === draft.learningLanguage,
+  )
+    ? draft.transcriptionLanguage
+    : 'custom';
 
   function resetForm() {
     setDraft(initialDraft);
@@ -150,6 +168,8 @@ export function LessonManager({ user }: { user: User }) {
       allowedVocabulary: lesson.allowedVocabulary,
       approximateAge: lesson.approximateAge ?? '5-6',
       spanishLevel: lesson.spanishLevel ?? 'beginner',
+      learningLanguage: lesson.learningLanguage ?? 'espanol',
+      transcriptionLanguage: lesson.transcriptionLanguage ?? 'es',
       priorityGrammarStructures: lesson.priorityGrammarStructures ?? [],
       culturalContext: lesson.culturalContext ?? '',
       supportPhrases: lesson.supportPhrases ?? [],
@@ -237,7 +257,34 @@ export function LessonManager({ user }: { user: User }) {
           </div>
         ) : (
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-3">
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-ink/70">
+                Idioma de la clase
+              </span>
+              <select
+                value={selectedTeachingLanguage}
+                onChange={(event) => {
+                  const nextLanguage = teachingLanguages.find(
+                    (language) => language.code === event.target.value,
+                  );
+                  setDraft((current) => ({
+                    ...current,
+                    learningLanguage: nextLanguage?.name ?? '',
+                    transcriptionLanguage: nextLanguage?.code ?? '',
+                  }));
+                }}
+                className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              >
+                {teachingLanguages.map((language) => (
+                  <option key={language.code} value={language.code}>
+                    {language.label}
+                  </option>
+                ))}
+                <option value="custom">Otro idioma</option>
+              </select>
+            </label>
+
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
                 Grupo o nivel
@@ -277,6 +324,50 @@ export function LessonManager({ user }: { user: User }) {
             </label>
           </div>
 
+          {selectedTeachingLanguage === 'custom' ? (
+            <div className="grid gap-5 sm:grid-cols-[1fr_0.45fr]">
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Nombre del idioma
+                </span>
+                <input
+                  type="text"
+                  value={draft.learningLanguage}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      learningLanguage: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="Aleman"
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Codigo de escucha
+                </span>
+                <input
+                  type="text"
+                  value={draft.transcriptionLanguage}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      transcriptionLanguage: event.target.value.toLowerCase(),
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="de"
+                  minLength={2}
+                  maxLength={3}
+                  required
+                />
+                <p className="mt-2 text-sm text-ink/55">Usa el codigo ISO, por ejemplo `de` o `it`.</p>
+              </label>
+            </div>
+          ) : null}
+
           <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
                 Objetivo de hoy
@@ -293,6 +384,26 @@ export function LessonManager({ user }: { user: User }) {
               placeholder="Reconocer y pronunciar nombres de animales en espanol."
               required
             />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-ink/70">
+              Guia para el peluche
+            </span>
+            <textarea
+              value={draft.teacherSpecialInstructions}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  teacherSpecialInstructions: event.target.value,
+                }))
+              }
+              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-[#fcfdfd] px-4 py-3 outline-none transition focus:border-coral"
+              placeholder="Pepe, eres ayudante de profesor de mandarin. Hoy practicaremos saludos. Habla despacio, usa pinyin cuando ayude y celebra cada intento."
+            />
+            <p className="mt-2 text-sm leading-6 text-ink/55">
+              Escribelo como si le dieras indicaciones a ChatGPT. Esta guia se combina con el tema, nivel y limites de la leccion.
+            </p>
           </label>
 
           <label className="block">
@@ -390,7 +501,7 @@ export function LessonManager({ user }: { user: User }) {
               </span>
               <span className="mt-1 block text-sm leading-6 text-ink/55">
                 Si un nino se confunde, Paco puede aclarar una palabra o instruccion
-                en ingles y volver enseguida al espanol.
+                en ingles y volver enseguida al idioma de la clase.
               </span>
             </span>
           </label>
@@ -530,7 +641,11 @@ export function LessonManager({ user }: { user: User }) {
                           <p className="text-sm font-bold text-ink/55">Tema</p>
                           <p className="text-xl font-extrabold">{lesson.topic}</p>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
+                            <p className="text-sm font-bold text-ink/55">Idioma</p>
+                            <p className="mt-1 font-bold">{lesson.learningLanguage ?? 'espanol'}</p>
+                          </div>
                           <div className="rounded-2xl bg-[#f8fbff] px-4 py-3">
                             <p className="text-sm font-bold text-ink/55">Nivel</p>
                             <p className="mt-1 font-bold">{lesson.gradeLevel}</p>

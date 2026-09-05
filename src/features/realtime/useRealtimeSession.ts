@@ -34,8 +34,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   );
   const sessionInfoRef = useRef<SessionInfo | null>(null);
   const activeResponseIdRef = useRef<string | null>(null);
-  const ignoredResponseIdRef = useRef<string | null>(null);
-  const suppressNextResponseRef = useRef(false);
+  const pendingResponseRef = useRef(false);
   const wakeUnlockedRef = useRef(false);
   const wakeWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hiddenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,8 +67,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       bundleRef.current = null;
       sessionInfoRef.current = null;
       activeResponseIdRef.current = null;
-      ignoredResponseIdRef.current = null;
-      suppressNextResponseRef.current = false;
+      pendingResponseRef.current = false;
       wakeUnlockedRef.current = false;
       setConnectionReady(false);
 
@@ -99,9 +97,8 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     (message?: string) => {
       clearWakeWindow();
       wakeUnlockedRef.current = false;
-      suppressNextResponseRef.current = false;
-      ignoredResponseIdRef.current = null;
       activeResponseIdRef.current = null;
+      pendingResponseRef.current = false;
       setState('awaiting_wake');
 
       if (message) {
@@ -150,6 +147,17 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     });
   }, [sendRealtimeEvent]);
 
+  const requestAssistantResponse = useCallback(() => {
+    if (activeResponseIdRef.current) {
+      pendingResponseRef.current = true;
+      cancelModelSpeech();
+      return;
+    }
+
+    sendRealtimeEvent({ type: 'response.create' });
+    setState('model_processing');
+  }, [cancelModelSpeech, sendRealtimeEvent]);
+
   const startSession = useCallback(async () => {
     if (!runtime || bundleRef.current) {
       return;
@@ -160,8 +168,6 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     setLastTranscript('');
     setAssistantReply('');
     wakeUnlockedRef.current = false;
-    suppressNextResponseRef.current = false;
-    ignoredResponseIdRef.current = null;
     clearWakeWindow();
     setState('requesting_permission');
     await probePermission();
@@ -238,7 +244,6 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
             });
 
             if (wakeResult.kind === 'rejected') {
-              suppressNextResponseRef.current = true;
               setAssistantReply(wakeResult.prompt);
               setState('awaiting_wake');
               return;
@@ -246,7 +251,6 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
 
             if (wakeResult.kind === 'activation_only') {
               wakeUnlockedRef.current = true;
-              suppressNextResponseRef.current = true;
               setAssistantReply(wakeResult.prompt);
               setState('listening');
               armWakeWindow(runtime.activeCharacter.wakePhrase);
@@ -257,6 +261,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
             setLastTranscript(wakeResult.question);
             setAssistantReply(wakeResult.prompt);
             armWakeWindow(runtime.activeCharacter.wakePhrase);
+            requestAssistantResponse();
             return;
           }
 
@@ -267,18 +272,14 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
           });
 
           if (stopResult.kind === 'stop') {
-            suppressNextResponseRef.current = true;
             setLastTranscript(transcript);
             relockWakeSession(stopResult.prompt);
             return;
           }
 
-          if (activeResponseIdRef.current) {
-            cancelModelSpeech();
-          }
-
           setLastTranscript(transcript);
           armWakeWindow(runtime.activeCharacter.wakePhrase);
+          requestAssistantResponse();
           return;
         }
 
@@ -286,59 +287,36 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
           const responseId = event.response?.id || event.response_id || null;
           activeResponseIdRef.current = responseId;
 
-          if (suppressNextResponseRef.current && responseId) {
-            ignoredResponseIdRef.current = responseId;
-            suppressNextResponseRef.current = false;
-            cancelModelSpeech();
-            setState(wakeUnlockedRef.current ? 'listening' : 'awaiting_wake');
-            return;
-          }
-
           setState('model_processing');
           return;
         }
 
         if (event.type === 'response.output_audio.delta') {
-          if (ignoredResponseIdRef.current) {
-            return;
-          }
           clearWakeWindow();
           setState('model_speaking');
           return;
         }
 
         if (event.type === 'response.output_audio_transcript.delta') {
-          if (ignoredResponseIdRef.current) {
-            return;
-          }
           setAssistantReply((current) => `${current}${event.delta || ''}`);
           setState('model_speaking');
           return;
         }
 
         if (event.type === 'response.output_audio_transcript.done') {
-          if (ignoredResponseIdRef.current) {
-            return;
-          }
           setAssistantReply(event.transcript || '');
           return;
         }
 
         if (event.type === 'response.done') {
-          if (
-            ignoredResponseIdRef.current &&
-            (event.response_id === ignoredResponseIdRef.current ||
-              event.response?.id === ignoredResponseIdRef.current ||
-              !event.response_id)
-          ) {
-            ignoredResponseIdRef.current = null;
-            activeResponseIdRef.current = null;
-            armWakeWindow(runtime.activeCharacter.wakePhrase);
-            setState(wakeUnlockedRef.current ? 'listening' : 'awaiting_wake');
+          activeResponseIdRef.current = null;
+          if (pendingResponseRef.current) {
+            pendingResponseRef.current = false;
+            sendRealtimeEvent({ type: 'response.create' });
+            setState('model_processing');
             return;
           }
 
-          activeResponseIdRef.current = null;
           if (wakeUnlockedRef.current) {
             armWakeWindow(runtime.activeCharacter.wakePhrase);
           }
@@ -390,15 +368,16 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       setState('error');
     }
   }, [
-    cancelModelSpeech,
     clearWakeWindow,
     deviceId,
     endSession,
     probePermission,
     relockWakeSession,
     runtime,
+    sendRealtimeEvent,
     setPermission,
     armWakeWindow,
+    requestAssistantResponse,
   ]);
 
   useEffect(() => {

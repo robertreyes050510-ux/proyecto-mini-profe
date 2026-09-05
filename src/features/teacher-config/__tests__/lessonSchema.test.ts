@@ -24,6 +24,8 @@ describe('lessonSchema', () => {
     expect(result.correctionIntensity).toBe(lessonConfigDefaults.correctionIntensity);
     expect(result.englishSupportAllowed).toBe(true);
     expect(result.maxResponseSentences).toBe(4);
+    expect(result.learningLanguage).toBe('espanol');
+    expect(result.transcriptionLanguage).toBe('es');
   });
 
   it('rejects incomplete lesson config', () => {
