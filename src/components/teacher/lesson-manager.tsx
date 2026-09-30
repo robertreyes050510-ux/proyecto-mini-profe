@@ -58,6 +58,8 @@ const initialDraft: LessonDraft = {
   responseLength: 'short',
   avoidTopics: [],
   teacherSpecialInstructions: '',
+  storyModeEnabled: false,
+  storyPremise: '',
   maxResponseSentences: 2,
   maxQuestionsPerTurn: 1,
   englishFallbackText:
@@ -180,6 +182,8 @@ export function LessonManager({ user }: { user: User }) {
       responseLength: lesson.responseLength ?? 'short',
       avoidTopics: lesson.avoidTopics ?? [],
       teacherSpecialInstructions: lesson.teacherSpecialInstructions ?? '',
+      storyModeEnabled: lesson.storyModeEnabled ?? false,
+      storyPremise: lesson.storyPremise ?? '',
       maxResponseSentences: lesson.maxResponseSentences,
       maxQuestionsPerTurn: lesson.maxQuestionsPerTurn,
       englishFallbackText: lesson.englishFallbackText,
@@ -405,6 +409,52 @@ export function LessonManager({ user }: { user: User }) {
               Escribelo como si le dieras indicaciones a ChatGPT. Esta guia se combina con el tema, nivel y limites de la leccion.
             </p>
           </label>
+
+          <div className="rounded-[1.25rem] border border-ink/10 bg-[#fcfdfd] px-4 py-4">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={draft.storyModeEnabled}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    storyModeEnabled: event.target.checked,
+                  }))
+                }
+                className="mt-1 h-5 w-5 rounded border border-ink/20 text-coral focus:ring-coral"
+              />
+              <span className="block">
+                <span className="block text-sm font-bold text-ink/70">
+                  Modo cuento interactivo
+                </span>
+                <span className="mt-1 block text-sm leading-6 text-ink/55">
+                  El peluche cuenta por escenas, escucha preguntas, las responde y retoma el cuento sin perder el hilo.
+                </span>
+              </span>
+            </label>
+
+            {draft.storyModeEnabled ? (
+              <label className="mt-4 block">
+                <span className="mb-2 block text-sm font-bold text-ink/70">
+                  Premisa del cuento
+                </span>
+                <textarea
+                  value={draft.storyPremise}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      storyPremise: event.target.value,
+                    }))
+                  }
+                  className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none transition focus:border-coral"
+                  placeholder="Una tortuga curiosa busca una estrella perdida en el bosque. Introduce animales, una aventura amable y vocabulario de la leccion."
+                />
+                <p className="mt-2 text-sm leading-6 text-ink/55">
+                  Puedes dejarlo vacio para que el estudiante elija el cuento. Para empezar o continuar, puede decir “cuentame un cuento”, “sigue” o “continua”.
+                </p>
+              </label>
+            ) : null}
+          </div>
 
           <label className="block">
               <span className="mb-2 block text-sm font-bold text-ink/70">
@@ -669,6 +719,9 @@ export function LessonManager({ user }: { user: User }) {
                             {lesson.objective}
                           </p>
                         </div>
+                        {lesson.storyModeEnabled ? (
+                          <p className="text-sm font-bold text-coral">Cuento interactivo</p>
+                        ) : null}
                       </div>
 
                       <div className="flex shrink-0 items-center gap-3">

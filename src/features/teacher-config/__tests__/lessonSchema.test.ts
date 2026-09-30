@@ -26,6 +26,8 @@ describe('lessonSchema', () => {
     expect(result.maxResponseSentences).toBe(4);
     expect(result.learningLanguage).toBe('espanol');
     expect(result.transcriptionLanguage).toBe('es');
+    expect(result.storyModeEnabled).toBe(false);
+    expect(result.storyPremise).toBe('');
   });
 
   it('rejects incomplete lesson config', () => {

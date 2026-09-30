@@ -19,6 +19,7 @@ type SessionInfo = {
 };
 
 const ACTIVE_WAKE_WINDOW_MS = 25_000;
+const STORY_WAKE_WINDOW_MS = 60_000;
 
 export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   const [state, setState] = useState<RealtimeStudentState>('idle');
@@ -111,13 +112,16 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   const armWakeWindow = useCallback(
     (wakePhrase: string) => {
       clearWakeWindow();
+      const wakeWindowMs = runtime?.activeLesson.storyModeEnabled
+        ? STORY_WAKE_WINDOW_MS
+        : ACTIVE_WAKE_WINDOW_MS;
       wakeWindowTimeoutRef.current = setTimeout(() => {
         relockWakeSession(
           `Sesion en pausa por silencio. Di "${wakePhrase}" para volver a activarla.`,
         );
-      }, ACTIVE_WAKE_WINDOW_MS);
+      }, wakeWindowMs);
     },
-    [clearWakeWindow, relockWakeSession],
+    [clearWakeWindow, relockWakeSession, runtime?.activeLesson.storyModeEnabled],
   );
 
   const sendRealtimeEvent = useCallback((event: Record<string, unknown>) => {

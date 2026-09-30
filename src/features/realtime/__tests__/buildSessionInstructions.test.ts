@@ -33,6 +33,8 @@ describe('buildSessionInstructions', () => {
         responseLength: 'medium',
         avoidTopics: ['violencia'],
         teacherSpecialInstructions: 'Favorece ejemplos de mascotas.',
+        storyModeEnabled: true,
+        storyPremise: 'Una gata busca su casa durante una tormenta suave.',
         englishFallbackText:
           'En espanol lo decimos asi. Escucha y luego intentalo conmigo otra vez.',
       },
@@ -41,6 +43,8 @@ describe('buildSessionInstructions', () => {
     expect(result.text).toContain('Eres Sasa.');
     expect(result.text).toContain('Tema actual: Animales.');
     expect(result.text).toContain('Conversa principalmente en frances.');
+    expect(result.text).toContain('Modo cuento interactivo activo.');
+    expect(result.text).toContain('Una gata busca su casa durante una tormenta suave.');
     expect(result.text).toContain('Hablas como un companero de conversacion escolar');
     expect(result.text).toContain('Evita estos temas si aparecen: violencia.');
     expect(result.text).toContain('Usa apoyo breve en ingles de forma proactiva');

@@ -72,6 +72,9 @@ export function buildSessionInstructions(
       normalizedLesson.supportPhrases.length
         ? `Frases de apoyo utiles: ${normalizedLesson.supportPhrases.join(', ')}.`
         : 'No dependas de frases prefabricadas repetidas.',
+      normalizedLesson.storyModeEnabled
+        ? buildInteractiveStoryInstructions(normalizedLesson.storyPremise, learningLanguage)
+        : 'No inicies un cuento largo a menos que el estudiante o el profesor lo pida.',
     ],
     correctionStrategy: [
       `Intensidad de correccion: ${formatCorrectionIntensity(normalizedLesson.correctionIntensity)}.`,
@@ -163,8 +166,28 @@ function normalizeRealtimeLessonConfig(
     responseLength: normalized.responseLength,
     avoidTopics: normalized.avoidTopics,
     teacherSpecialInstructions: normalized.teacherSpecialInstructions,
+    storyModeEnabled: normalized.storyModeEnabled,
+    storyPremise: normalized.storyPremise,
     englishFallbackText: normalized.englishFallbackText,
   };
+}
+
+function buildInteractiveStoryInstructions(storyPremise: string, learningLanguage: string) {
+  const premise = storyPremise
+    ? `Premisa o encargo del cuento: ${storyPremise}.`
+    : 'El estudiante puede elegir el tema, personajes o lugar del cuento.';
+
+  return [
+    'Modo cuento interactivo activo.',
+    premise,
+    `Cuando el estudiante pida el cuento, empieza una narracion oral en ${learningLanguage}.`,
+    'Cuenta una escena breve de tres a cinco oraciones y despues haz una pausa real para que el estudiante pueda reaccionar o preguntar.',
+    'Mantiene con coherencia los personajes, lugares, hechos y problemas ya narrados durante toda la sesion.',
+    'Si el estudiante hace una pregunta sobre el cuento, responde con claridad en una o dos oraciones y retoma enseguida la siguiente parte del cuento.',
+    'Si dice "sigue", "continua" o pregunta que paso despues, continua desde el ultimo momento del relato.',
+    'No termines todo el cuento en una sola respuesta; construyelo por escenas hasta un final claro y amable.',
+    'Si el estudiante dice que pare, cambia de tema o pide otro cuento, respeta esa indicacion antes de continuar.',
+  ].join(' ');
 }
 
 function normalizeString(value: unknown) {

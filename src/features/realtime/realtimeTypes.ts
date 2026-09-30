@@ -59,6 +59,8 @@ export type RealtimeLessonSessionConfig = {
   responseLength: ResponseLengthProfile;
   avoidTopics: string[];
   teacherSpecialInstructions: string;
+  storyModeEnabled: boolean;
+  storyPremise: string;
   englishFallbackText: string;
 };
 

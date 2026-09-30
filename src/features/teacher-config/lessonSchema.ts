@@ -39,6 +39,8 @@ export const lessonConfigDefaults: Omit<LessonConfig, 'id'> = {
   responseLength: 'short',
   avoidTopics: [],
   teacherSpecialInstructions: '',
+  storyModeEnabled: false,
+  storyPremise: '',
   maxResponseSentences: 2,
   maxQuestionsPerTurn: 1,
   englishFallbackText:
@@ -97,6 +99,8 @@ export function normalizeLessonConfig(
     ),
     avoidTopics: normalizeStringList(source.avoidTopics),
     teacherSpecialInstructions: normalizeString(source.teacherSpecialInstructions),
+    storyModeEnabled: normalizeBoolean(source.storyModeEnabled, false),
+    storyPremise: normalizeString(source.storyPremise),
     maxResponseSentences: normalizeInteger(source.maxResponseSentences, 1, 4, 2),
     maxQuestionsPerTurn: normalizeInteger(source.maxQuestionsPerTurn, 0, 2, 1),
     englishFallbackText:

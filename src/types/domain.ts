@@ -60,6 +60,8 @@ export type LessonConfig = {
   responseLength: ResponseLengthProfile;
   avoidTopics: string[];
   teacherSpecialInstructions: string;
+  storyModeEnabled: boolean;
+  storyPremise: string;
   maxResponseSentences: number;
   maxQuestionsPerTurn: number;
   englishFallbackText: string;
