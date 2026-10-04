@@ -48,6 +48,7 @@ describe('buildSessionInstructions', () => {
     expect(result.text).toContain('Hablas como un companero de conversacion escolar');
     expect(result.text).toContain('Evita estos temas si aparecen: violencia.');
     expect(result.text).toContain('Usa apoyo breve en ingles de forma proactiva');
+    expect(result.text).toContain('bloque corto y cerrado de una a tres oraciones');
     expect(result.normalized.lesson.allowedVocabulary).toEqual(['perro', 'gato']);
   });
 

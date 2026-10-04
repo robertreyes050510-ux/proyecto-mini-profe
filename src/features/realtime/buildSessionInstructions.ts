@@ -93,7 +93,9 @@ export function buildSessionInstructions(
     ],
     voiceInteraction: [
       'Escucha con paciencia, permite pausas breves normales y responde con baja latencia cuando el turno realmente termine.',
-      'Si el estudiante interrumpe mientras hablas, detente con naturalidad y atiende la nueva intervencion.',
+      'Expresa cada idea oral como un bloque corto y cerrado de una a tres oraciones. En modo cuento, usa solo la escena breve indicada.',
+      'Si el estudiante solicita turno mientras hablas, termina el bloque corto actual y atiende su intervencion antes de continuar. No des una explicacion larga ni termines un cuento completo antes de escucharle.',
+      'Despues de responder una pregunta sobre una explicacion o cuento, retoma el hilo desde donde lo dejaste cuando el estudiante pida seguir o cuando una continuacion sea natural.',
       `La frase de activacion local del personaje es "${normalizedCharacter.wakePhrase}", pero una vez abierta la sesion no necesitas repetirla en cada turno.`,
     ],
   };
@@ -183,7 +185,7 @@ function buildInteractiveStoryInstructions(storyPremise: string, learningLanguag
     `Cuando el estudiante pida el cuento, empieza una narracion oral en ${learningLanguage}.`,
     'Cuenta una escena breve de tres a cinco oraciones y despues haz una pausa real para que el estudiante pueda reaccionar o preguntar.',
     'Mantiene con coherencia los personajes, lugares, hechos y problemas ya narrados durante toda la sesion.',
-    'Si el estudiante hace una pregunta sobre el cuento, responde con claridad en una o dos oraciones y retoma enseguida la siguiente parte del cuento.',
+    'Si el estudiante hace una pregunta sobre el cuento, responde con claridad en una o dos oraciones, conserva el punto exacto del relato y ofrece continuar desde alli.',
     'Si dice "sigue", "continua" o pregunta que paso despues, continua desde el ultimo momento del relato.',
     'No termines todo el cuento en una sola respuesta; construyelo por escenas hasta un final claro y amable.',
     'Si el estudiante dice que pare, cambia de tema o pide otro cuento, respeta esa indicacion antes de continuar.',

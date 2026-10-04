@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRealtimeConnection } from '@/features/realtime/createRealtimeConnection';
 import { parseRealtimeEvent } from '@/features/realtime/realtimeEvents';
 import {
+  isDirectedAtCharacter,
+  isMeaningfulUserSpeech,
+  normalizeSpeechText,
+} from '@/features/realtime/turnPolicy';
+import {
   getRealtimeHiddenPageTimeoutMs,
   getRealtimeSessionMaxMs,
 } from '@/features/realtime/realtimeConfig';
@@ -36,6 +41,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
   const sessionInfoRef = useRef<SessionInfo | null>(null);
   const activeResponseIdRef = useRef<string | null>(null);
   const pendingResponseRef = useRef(false);
+  const userSpeechInProgressRef = useRef(false);
   const wakeUnlockedRef = useRef(false);
   const wakeWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hiddenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +75,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       sessionInfoRef.current = null;
       activeResponseIdRef.current = null;
       pendingResponseRef.current = false;
+      userSpeechInProgressRef.current = false;
       wakeUnlockedRef.current = false;
       setConnectionReady(false);
 
@@ -100,6 +107,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
       wakeUnlockedRef.current = false;
       activeResponseIdRef.current = null;
       pendingResponseRef.current = false;
+      userSpeechInProgressRef.current = false;
       setState('awaiting_wake');
 
       if (message) {
@@ -134,33 +142,52 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     channel.send(JSON.stringify(event));
   }, []);
 
-  const cancelModelSpeech = useCallback(() => {
+  const removeIgnoredConversationItem = useCallback(
+    (itemId: string | undefined) => {
+      if (!itemId) {
+        return;
+      }
+
+      sendRealtimeEvent({ type: 'conversation.item.delete', item_id: itemId });
+    },
+    [sendRealtimeEvent],
+  );
+
+  const stopCurrentResponse = useCallback(() => {
     const responseId = activeResponseIdRef.current;
     sendRealtimeEvent(
       responseId
-        ? {
-            type: 'response.cancel',
-            response_id: responseId,
-          }
-        : {
-            type: 'response.cancel',
-          },
+        ? { type: 'response.cancel', response_id: responseId }
+        : { type: 'response.cancel' },
     );
-    sendRealtimeEvent({
-      type: 'output_audio_buffer.clear',
-    });
+    sendRealtimeEvent({ type: 'output_audio_buffer.clear' });
   }, [sendRealtimeEvent]);
 
   const requestAssistantResponse = useCallback(() => {
     if (activeResponseIdRef.current) {
+      // Do not cut spoken audio because VAD found a transcript. The active
+      // response finishes its short block, then the queued child turn runs.
       pendingResponseRef.current = true;
-      cancelModelSpeech();
       return;
     }
 
     sendRealtimeEvent({ type: 'response.create' });
     setState('model_processing');
-  }, [cancelModelSpeech, sendRealtimeEvent]);
+  }, [sendRealtimeEvent]);
+
+  const requestQueuedResponseWhenReady = useCallback(() => {
+    if (
+      !pendingResponseRef.current ||
+      activeResponseIdRef.current ||
+      userSpeechInProgressRef.current
+    ) {
+      return;
+    }
+
+    pendingResponseRef.current = false;
+    sendRealtimeEvent({ type: 'response.create' });
+    setState('model_processing');
+  }, [sendRealtimeEvent]);
 
   const startSession = useCallback(async () => {
     if (!runtime || bundleRef.current) {
@@ -220,19 +247,24 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
         }
 
         if (event.type === 'input_audio_buffer.speech_started') {
-          // VAD also fires for bumps and room noise. Wait for a real transcript
-          // before interrupting the character or treating this as activity.
+          userSpeechInProgressRef.current = true;
+          if (!activeResponseIdRef.current) {
+            setState('user_speaking');
+          }
           return;
         }
 
         if (event.type === 'input_audio_buffer.speech_stopped') {
+          userSpeechInProgressRef.current = false;
+          requestQueuedResponseWhenReady();
           return;
         }
 
         if (event.type === 'conversation.item.input_audio_transcription.completed') {
           const transcript = event.transcript || '';
 
-          if (!hasMeaningfulUserSpeech(transcript)) {
+          if (!isMeaningfulUserSpeech(transcript)) {
+            removeIgnoredConversationItem(event.item_id);
             return;
           }
 
@@ -248,6 +280,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
             });
 
             if (wakeResult.kind === 'rejected') {
+              removeIgnoredConversationItem(event.item_id);
               setAssistantReply(wakeResult.prompt);
               setState('awaiting_wake');
               return;
@@ -277,7 +310,31 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
 
           if (stopResult.kind === 'stop') {
             setLastTranscript(transcript);
+            removeIgnoredConversationItem(event.item_id);
+            stopCurrentResponse();
             relockWakeSession(stopResult.prompt);
+            return;
+          }
+
+          if (activeResponseIdRef.current) {
+            const directedAtCharacter = isDirectedAtCharacter({
+              transcript,
+              characterName: runtime.activeCharacter.name,
+              wakeAliases: runtime.activeCharacter.wakeAliases ?? [],
+            });
+
+            if (!directedAtCharacter) {
+              // A live microphone can still transcribe room conversation or
+              // speaker bleed. It must neither interrupt Zaza nor enter the
+              // conversation that will drive the next response.
+              removeIgnoredConversationItem(event.item_id);
+              return;
+            }
+
+            setLastTranscript(transcript);
+            setAssistantReply('Zaza termina esta idea corta y luego te escucha.');
+            pendingResponseRef.current = true;
+            armWakeWindow(runtime.activeCharacter.wakePhrase);
             return;
           }
 
@@ -315,9 +372,7 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
         if (event.type === 'response.done') {
           activeResponseIdRef.current = null;
           if (pendingResponseRef.current) {
-            pendingResponseRef.current = false;
-            sendRealtimeEvent({ type: 'response.create' });
-            setState('model_processing');
+            requestQueuedResponseWhenReady();
             return;
           }
 
@@ -378,10 +433,12 @@ export function useRealtimeSession(runtime: StudentRuntimeConfig | null) {
     probePermission,
     relockWakeSession,
     runtime,
-    sendRealtimeEvent,
     setPermission,
     armWakeWindow,
     requestAssistantResponse,
+    requestQueuedResponseWhenReady,
+    removeIgnoredConversationItem,
+    stopCurrentResponse,
   ]);
 
   useEffect(() => {
@@ -546,34 +603,10 @@ function processRealtimeStopTranscript(input: {
   };
 }
 
-function hasMeaningfulUserSpeech(transcript: string) {
-  const normalizedTranscript = normalizeSpeechText(transcript);
-
-  if (!normalizedTranscript) {
-    return false;
-  }
-
-  // Transcription can label room sounds without any child speech.
-  if (['inaudible', 'ruido', 'noise', 'silencio'].includes(normalizedTranscript)) {
-    return false;
-  }
-
-  return normalizedTranscript.split(' ').some((word) => word.length >= 2);
-}
-
-function normalizeSpeechText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[!?.,;:]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function findMatchingCue(transcript: string, cues: string[]) {
   return cues.find((cue) => transcript === cue || transcript.startsWith(`${cue} `));
 }
+
 
 function buildOpeningCues(
   normalizedWakePhrase: string,
